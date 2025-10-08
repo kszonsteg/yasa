@@ -1,0 +1,17 @@
+[package]
+name = "yasa"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "yasa_core"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+fastrand = "2.3.0"
+log = "0.4.28"
+pyo3 = "0.25.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+uuid = { version = "1.18.1", features = ["v4"] }

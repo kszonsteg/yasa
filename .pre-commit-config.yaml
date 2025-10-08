@@ -1,0 +1,57 @@
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+repos:
+  - repo: 'https://github.com/pre-commit/pre-commit-hooks'
+    rev: v6.0.0
+    hooks:
+      - id: check-json
+        stages:
+          - pre-commit
+      - id: check-toml
+        stages:
+          - pre-commit
+      - id: check-yaml
+        stages:
+          - pre-commit
+      - id: check-added-large-files
+        stages:
+          - pre-commit
+      - id: trailing-whitespace
+        stages:
+          - pre-commit
+      - id: mixed-line-ending
+        stages:
+          - pre-commit
+        args:
+          - '--fix=lf'
+  - repo: 'https://github.com/berquist/pre-commit-rust'
+    rev: v2.1.1
+    hooks:
+      - id: cargo-fmt
+        stages:
+          - pre-commit
+      - id: cargo-check
+        stages:
+          - pre-commit
+      - id: cargo-clippy
+        stages:
+          - pre-commit
+      - id: cargo-test
+        stages:
+          - pre-commit
+  - repo: 'https://github.com/astral-sh/ruff-pre-commit'
+    rev: v0.14.0
+    hooks:
+      - id: ruff-check
+        stages:
+          - pre-commit
+      - id: ruff-format
+        stages:
+          - pre-commit
+  - repo: 'https://github.com/compilerla/conventional-pre-commit'
+    rev: v4.2.0
+    hooks:
+      - id: conventional-pre-commit
+        stages:
+          - commit-msg

@@ -1,0 +1,12 @@
+# Rust build
+/target
+
+# C/Rust extensions
+*.so
+
+# Python
+__pycache__/
+.pytest_cache/
+.ruff_cache
+
+.venv/
