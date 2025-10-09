@@ -38,32 +38,37 @@ impl Default for TurnState {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct GameState {
+    // basic game info
     pub half: u8,
     pub round: u8,
     pub game_over: bool,
     pub weather: WeatherType,
+    #[serde(default)]
+    pub balls: Vec<Ball>,
+    // team info
     pub home_team: Option<Team>,
+    pub home_dugout: Option<Dugout>,
     pub away_team: Option<Team>,
+    pub away_dugout: Option<Dugout>,
     pub kicking_first_half: Option<String>,
     pub receiving_first_half: Option<String>,
     pub kicking_this_drive: Option<String>,
     pub receiving_this_drive: Option<String>,
     pub coin_toss_winner: Option<String>,
+    // turn state
+    pub turn_state: Option<TurnState>,
+    // procedure
+    #[serde(default)]
+    pub procedure: Option<Procedure>,
     pub current_team_id: Option<String>,
     pub active_player_id: Option<String>,
-    #[serde(default)]
-    pub balls: Vec<Ball>,
-    pub home_dugout: Option<Dugout>,
-    pub away_dugout: Option<Dugout>,
-    #[serde(default)]
-    pub available_actions: Vec<Action>,
-    pub procedure: Option<Procedure>,
-    pub turn_state: Option<TurnState>,
     pub rolls: Vec<ActionType>,
     pub chain_push: Option<bool>, // Indicates if the last push was part of a chain
     pub attacker: Option<String>, // Player ID of the player who pushed
     pub defender: Option<String>, // Player ID of the player who was pushed
     pub position: Option<Vec<i32>>, // Position of the player which is blocked
+    #[serde(default)]
+    pub available_actions: Vec<Action>,
 }
 
 impl Default for GameState {
@@ -88,7 +93,7 @@ impl Default for GameState {
             procedure: None,
             turn_state: None,
             coin_toss_winner: None,
-            rolls: vec![],
+            rolls: Vec::new(),
             chain_push: None,
             attacker: None,
             defender: None,
