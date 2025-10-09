@@ -1,3 +1,3 @@
-from yasa.yasa_core import sum_as_string
+from yasa.bot import YasaRandom
 
-__all__ = ["sum_as_string"]
+__all__ = ["YasaRandom"]

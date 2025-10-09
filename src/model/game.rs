@@ -101,3 +101,10 @@ impl Default for GameState {
         }
     }
 }
+
+impl GameState {
+    pub fn from_json(state: &str) -> Result<GameState, serde_json::Error> {
+        let game_state: GameState = serde_json::from_str(state)?;
+        Ok(game_state)
+    }
+}

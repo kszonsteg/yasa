@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Iterable
 
 from botbowl import Action, ActionType, Game, GameState, Player, Square
 
@@ -7,18 +8,19 @@ class ActionParser:
     """Handles parsing and conversion of actions."""
 
     @staticmethod
-    def parse_actions_from_json(
-        action_data: list[dict], game_state: GameState
+    def parse_action(action: dict, game_state: GameState) -> Action:
+        return Action(
+            action_type=ActionType[action["action_type"]],
+            position=ActionParser._position_to_square(action.get("position")),
+            player=ActionParser._player_from_id(game_state, action.get("player")),
+        )
+
+    @staticmethod
+    def parse_actions(
+        action_data: Iterable[dict], game_state: GameState
     ) -> list[Action]:
         """Parse actions from JSON format to botbowl Action objects."""
-        return [
-            Action(
-                action_type=ActionType[action["action_type"]],
-                position=ActionParser._position_to_square(action.get("position")),
-                player=ActionParser._player_from_id(game_state, action.get("player")),
-            )
-            for action in action_data
-        ]
+        return [ActionParser.parse_action(action, game_state) for action in action_data]
 
     @staticmethod
     def _position_to_square(position: dict[str, int] | None) -> Square | None:
@@ -44,10 +46,6 @@ class ActionParser:
 class ActionValidator:
     """Validates that actions match between YASA and BotBowl."""
 
-    def __init__(self, logger: logging.Logger):
-        self.logger = logger
-        self.unique_procedure_names: set[str] = set()
-
     @staticmethod
     def extract_actions_from_game(game: Game) -> list[Action]:
         """Extract available actions from the game state."""
@@ -67,18 +65,18 @@ class ActionValidator:
                 actions.append(Action(action_choice.action_type))
         return actions
 
-    def compare_actions(self, game: Game, yasa_actions: list[Action]) -> None:
+    @staticmethod
+    def compare_actions(game: Game, yasa_actions: list[Action]) -> None:
         """Compare YASA actions with BotBowl actions and log differences."""
         procedure_name = game.state.stack.items[-1].__class__.__name__
         game_actions = ActionValidator.extract_actions_from_game(game)
-        self.unique_procedure_names.add(procedure_name)
 
-        self.logger.info(
+        logging.info(
             f"Procedure: {procedure_name}, BotBowl actions: {len(game_actions)}, "
             f"Yasa actions: {len(yasa_actions)}"
         )
-        self.logger.debug(f"Game actions: {game_actions}")
-        self.logger.debug(f"Yasa actions: {yasa_actions}")
+        logging.debug(f"Game actions: {game_actions}")
+        logging.debug(f"Yasa actions: {yasa_actions}")
 
         # Convert actions to comparable tuples
         def action_to_tuple(action: Action) -> tuple[str, Square | None, Player | None]:
@@ -92,14 +90,14 @@ class ActionValidator:
 
         # Log differences
         for action in only_in_game:
-            self.logger.warning(f"Action only in game_actions: {action}")
+            logging.warning(f"Action only in game_actions: {action}")
         for action in only_in_yasa:
-            self.logger.warning(f"Action only in yasa_actions: {action}")
+            logging.warning(f"Action only in yasa_actions: {action}")
 
         if only_in_game or only_in_yasa:
-            self.logger.error(f"yasa_actions: {yasa_action_tuples}")
-            self.logger.error(f"game_actions: {game_action_tuples}")
-            self.logger.error(
+            logging.error(f"yasa_actions: {yasa_action_tuples}")
+            logging.error(f"game_actions: {game_action_tuples}")
+            logging.error(
                 f"Procedure: {procedure_name}, BotBowl actions: {len(game_actions)}, "
                 f"Yasa actions: {len(yasa_actions)}"
             )
