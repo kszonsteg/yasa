@@ -22,3 +22,11 @@ impl Team {
         }
     }
 }
+
+#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
+pub struct Dugout {
+    pub team_id: String,
+    pub reserves: Vec<String>, // Player IDs
+    pub kod: Vec<String>,      // Knocked out players
+    pub dungeon: Vec<String>,  // Ejected players
+}

@@ -5,17 +5,9 @@ use crate::model::position::Square;
 use super::action::Action;
 use super::ball::Ball;
 use super::enums::{ActionType, Procedure, WeatherType};
-use super::team::Team;
+use super::team::{Dugout, Team};
 
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
-pub struct Dugout {
-    pub team_id: String,
-    pub reserves: Vec<String>, // Player IDs
-    pub kod: Vec<String>,      // Knocked out players
-    pub dungeon: Vec<String>,  // Ejected players
-}
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TurnState {
