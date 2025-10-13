@@ -5,6 +5,7 @@ use pyo3::{
 
 use crate::model::game::GameState;
 
+pub mod actions;
 pub mod model;
 
 #[pyfunction]

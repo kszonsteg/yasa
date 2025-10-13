@@ -1,3 +1,7 @@
+use crate::model::constants::{ARENA_HEIGHT, ARENA_WIDTH};
+use crate::model::player::Player;
+use crate::model::position::Square;
+
 use super::action::Action;
 use super::ball::Ball;
 use super::enums::{ActionType, Procedure, WeatherType};
@@ -106,5 +110,97 @@ impl GameState {
     pub fn from_json(state: &str) -> Result<GameState, serde_json::Error> {
         let game_state: GameState = serde_json::from_str(state)?;
         Ok(game_state)
+    }
+
+    pub fn is_home_team(&self, team_id: &String) -> bool {
+        if let Some(home_team) = &self.home_team {
+            home_team.team_id == *team_id
+        } else {
+            false
+        }
+    }
+
+    pub fn is_team_side(&self, position: &Square, team_id: &String) -> bool {
+        if self.is_home_team(team_id) {
+            position.x >= ARENA_WIDTH / 2
+        } else {
+            position.x < ARENA_WIDTH / 2
+        }
+    }
+
+    pub fn get_ball_position(&self) -> Result<Square, String> {
+        self.balls
+            .first()
+            .and_then(|ball| ball.position)
+            .ok_or("Missing ball on field".to_string())
+    }
+
+    pub fn get_player_at(&self, position: &Square) -> Result<&Player, String> {
+        if let Some(home_team) = &self.home_team {
+            for player in home_team.players_by_id.values() {
+                if let Some(player_pos) = &player.position {
+                    if player_pos.x == position.x && player_pos.y == position.y {
+                        return Ok(player);
+                    }
+                }
+            }
+        }
+
+        if let Some(away_team) = &self.away_team {
+            for player in away_team.players_by_id.values() {
+                if let Some(player_pos) = &player.position {
+                    if player_pos.x == position.x && player_pos.y == position.y {
+                        return Ok(player);
+                    }
+                }
+            }
+        }
+
+        Err(format!("No player at position {position:?}"))
+    }
+
+    pub fn get_receiving_team_side_positions(&self) -> Vec<Square> {
+        let mut positions = vec![];
+        if let Some(receiving_team_id) = &self.receiving_this_drive {
+            let (x_start, x_end) = if self.is_home_team(receiving_team_id) {
+                (ARENA_WIDTH / 2, ARENA_WIDTH - 2)
+            } else {
+                (1, ARENA_WIDTH / 2 - 1)
+            };
+            for y in 1..ARENA_HEIGHT - 1 {
+                for x in x_start..=x_end {
+                    positions.push(Square::new(x, y))
+                }
+            }
+        };
+        positions
+    }
+
+    /// Get the number of tackle zones at a specific position for a team
+    pub fn get_team_tackle_zones_at(&self, team_id: &String, position: &Square) -> usize {
+        let mut tackle_zones = 0;
+
+        // Get the opposing team
+        let opp_team = if self.is_home_team(team_id) {
+            &self.away_team
+        } else {
+            &self.home_team
+        };
+
+        if let Some(team) = opp_team {
+            for opponent in team.players_by_id.values() {
+                if let Some(opp_pos) = &opponent.position {
+                    // Check if the opponent is adjacent (within tackle zone range)
+                    if position.distance(opp_pos) == 1
+                        && opponent.state.up
+                        && !opponent.state.stunned
+                    {
+                        tackle_zones += 1;
+                    }
+                }
+            }
+        }
+
+        tackle_zones
     }
 }
