@@ -78,7 +78,6 @@ pub fn touchback_discovery(game_state: &mut GameState) -> Result<(), String> {
 pub fn high_kick_discovery(game_state: &mut GameState) -> Result<(), String> {
     game_state.available_actions = vec![];
 
-    // Get the receiving team ID
     if let Some(receiving_team_id) = &game_state.receiving_this_drive {
         let receiving_team = if game_state.is_home_team(receiving_team_id) {
             &game_state.home_team

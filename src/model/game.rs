@@ -120,6 +120,33 @@ impl GameState {
         }
     }
 
+    pub fn get_adjacent_opponents(
+        &self,
+        team_id: &String,
+        player_postion: &Square,
+    ) -> Result<Vec<&Player>, String> {
+        let mut opponents = vec![];
+        if let Some(opp_team) = if self.is_home_team(team_id) {
+            &self.away_team
+        } else {
+            &self.home_team
+        } {
+            for player in opp_team.players_by_id.values() {
+                if let Some(opp_position) = player.position {
+                    if opp_position.distance(player_postion) == 1 {
+                        opponents.push(player);
+                    }
+                } else {
+                    return Err("Missing player position".to_string());
+                }
+            }
+        } else {
+            return Err("Missing opp team".to_string());
+        }
+
+        Ok(opponents)
+    }
+
     pub fn get_ball_position(&self) -> Result<Square, String> {
         self.balls
             .first()
