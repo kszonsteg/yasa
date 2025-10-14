@@ -154,6 +154,26 @@ impl GameState {
             .ok_or("Missing ball on field".to_string())
     }
 
+    pub fn get_player(&self, player_id: &String) -> Result<&Player, String> {
+        if let Some(home_team) = &self.home_team {
+            for player in home_team.players_by_id.values() {
+                if player.player_id == *player_id {
+                    return Ok(player);
+                }
+            }
+        }
+
+        if let Some(away_team) = &self.away_team {
+            for player in away_team.players_by_id.values() {
+                if player.player_id == *player_id {
+                    return Ok(player);
+                }
+            }
+        }
+
+        Err(format!("No player with id {player_id:?}"))
+    }
+
     pub fn get_player_at(&self, position: &Square) -> Result<&Player, String> {
         if let Some(home_team) = &self.home_team {
             for player in home_team.players_by_id.values() {
@@ -176,6 +196,35 @@ impl GameState {
         }
 
         Err(format!("No player at position {position:?}"))
+    }
+
+    pub fn get_active_player(&self) -> Result<&Player, String> {
+        let active_player_id = self
+            .active_player_id
+            .as_ref()
+            .ok_or("Missing active player.".to_string())?;
+
+        self.get_player(active_player_id)
+    }
+
+    pub fn get_player_team_id(&self, player_id: &String) -> Result<&String, String> {
+        if let Some(home_team) = &self.home_team {
+            for player in home_team.players_by_id.values() {
+                if player.player_id == *player_id {
+                    return Ok(&home_team.team_id);
+                }
+            }
+        }
+
+        if let Some(away_team) = &self.away_team {
+            for player in away_team.players_by_id.values() {
+                if player.player_id == *player_id {
+                    return Ok(&away_team.team_id);
+                }
+            }
+        }
+
+        Err(format!("No player with id {player_id:?}"))
     }
 
     pub fn get_receiving_team_side_positions(&self) -> Vec<Square> {
