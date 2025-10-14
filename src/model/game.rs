@@ -1,10 +1,9 @@
-use crate::model::constants::{ARENA_HEIGHT, ARENA_WIDTH};
-use crate::model::player::Player;
-use crate::model::position::Square;
-
 use super::action::Action;
 use super::ball::Ball;
-use super::enums::{ActionType, Procedure, WeatherType};
+use super::constants::{ARENA_HEIGHT, ARENA_WIDTH, PASS_MATRIX};
+use super::enums::{ActionType, PassDistance, Procedure, WeatherType};
+use super::player::Player;
+use super::position::Square;
 use super::team::{Dugout, Team};
 
 use serde::{Deserialize, Serialize};
@@ -295,6 +294,65 @@ impl GameState {
         positions
     }
 
+    pub fn get_pass_distance(
+        &self,
+        from_position: &Square,
+        to_position: &Square,
+    ) -> Result<PassDistance, String> {
+        let distance_x = (from_position.x - to_position.x).unsigned_abs() as usize;
+        let distance_y = (from_position.y - to_position.y).unsigned_abs() as usize;
+
+        let distance = PASS_MATRIX[distance_y][distance_x];
+
+        match distance {
+            1 => Ok(PassDistance::QuickPass),
+            2 => Ok(PassDistance::ShortPass),
+            3 => Ok(PassDistance::LongPass),
+            4 => Ok(PassDistance::LongBomb),
+            5 => Ok(PassDistance::HailMary),
+            _ => Err("Wrong Pass distance".to_string()),
+        }
+    }
+
+    pub fn get_pass_distances_at(
+        &self,
+        position: &Square,
+    ) -> Result<(Vec<Square>, Vec<PassDistance>), String> {
+        let mut squares = Vec::new();
+        let mut distances = Vec::new();
+
+        let distances_allowed: Vec<PassDistance> = if self.weather == WeatherType::Blizzard {
+            vec![PassDistance::QuickPass, PassDistance::ShortPass]
+        } else {
+            vec![
+                PassDistance::QuickPass,
+                PassDistance::ShortPass,
+                PassDistance::LongPass,
+                PassDistance::LongBomb,
+            ]
+        };
+
+        for y in position.y.saturating_sub(13)..=position.y.saturating_add(13) {
+            if y <= 0 || y >= ARENA_HEIGHT - 1 {
+                continue;
+            }
+
+            for x in position.x.saturating_sub(13)..=position.x.saturating_add(13) {
+                if x <= 0 || x >= ARENA_WIDTH - 1 {
+                    continue;
+                }
+
+                let to_position = Square::new(x, y);
+                let distance = self.get_pass_distance(position, &to_position)?;
+                if distances_allowed.contains(&distance) {
+                    squares.push(to_position);
+                    distances.push(distance);
+                }
+            }
+        }
+
+        Ok((squares, distances))
+    }
     /// Get the number of tackle zones at a specific position for a team
     pub fn get_team_tackle_zones_at(&self, team_id: &String, position: &Square) -> usize {
         let mut tackle_zones = 0;

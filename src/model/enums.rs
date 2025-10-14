@@ -126,3 +126,12 @@ pub enum WeatherType {
     SwelteringHeat,
     VerySunny,
 }
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Hash)]
+pub enum PassDistance {
+    QuickPass,
+    ShortPass,
+    LongPass,
+    LongBomb,
+    HailMary,
+}

@@ -60,4 +60,54 @@ impl Square {
 
         adjacent_squares
     }
+
+    pub fn create_pass_path(&self, to: &Square) -> Vec<Square> {
+        let (mut x1, mut y1) = (self.x, self.y);
+        let (mut x2, mut y2) = (to.x, to.y);
+
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+
+        let is_steep = dy.abs() > dx.abs();
+
+        if is_steep {
+            std::mem::swap(&mut x1, &mut y1);
+            std::mem::swap(&mut x2, &mut y2);
+        }
+
+        let swapped = if x1 > x2 {
+            std::mem::swap(&mut x1, &mut x2);
+            std::mem::swap(&mut y1, &mut y2);
+            true
+        } else {
+            false
+        };
+
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+
+        let mut error = dx / 2;
+        let ystep = if y1 < y2 { 1 } else { -1 };
+
+        let mut y = y1;
+        let mut path = vec![];
+        for x in x1..=x2 {
+            if is_steep {
+                path.push(Square::new(y, x));
+            } else {
+                path.push(Square::new(x, y));
+            }
+            error -= dy.abs();
+            if error < 0 {
+                y += ystep;
+                error += dx;
+            }
+        }
+
+        if swapped {
+            path.reverse();
+        }
+
+        path
+    }
 }
