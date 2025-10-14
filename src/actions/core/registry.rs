@@ -1,6 +1,9 @@
 use crate::actions::discovery::block::{
     block_action_discovery, block_discovery, follow_up_discovery, push_discovery,
 };
+use crate::actions::discovery::movement::{
+    blitz_discovery, foul_discovery, handoff_discovery, move_discovery,
+};
 use crate::actions::discovery::setup::{
     coin_toss_flip_action_discovery, coin_toss_kick_receive_discovery, high_kick_discovery,
     place_ball_discovery, setup_discovery, touchback_discovery,
@@ -43,7 +46,12 @@ impl ActionRegistry {
             Some(Procedure::Block) => block_discovery(game_state),
             Some(Procedure::FollowUp) => follow_up_discovery(game_state),
             Some(Procedure::Push) => push_discovery(game_state),
-            // TODO: Movement and Pass
+            // Movement
+            Some(Procedure::BlitzAction) => blitz_discovery(game_state),
+            Some(Procedure::FoulAction) => foul_discovery(game_state),
+            Some(Procedure::HandoffAction) => handoff_discovery(game_state),
+            Some(Procedure::MoveAction) => move_discovery(game_state),
+            // TODO: Pass
             // Errors
             Some(p) => Err(format!("Procedure not supported {p:?} in action discovery")),
             _ => Err("No procedure found in actions discovery.".to_string()),
