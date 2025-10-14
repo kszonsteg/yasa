@@ -1,4 +1,5 @@
 use crate::actions::discovery::setup::*;
+use crate::actions::discovery::special::{ejection_discovery, reroll_discovery};
 use crate::actions::discovery::turn::turn_discovery;
 use crate::model::enums::Procedure;
 use crate::model::game::GameState;
@@ -28,7 +29,10 @@ impl ActionRegistry {
             Some(Procedure::HighKick) => high_kick_discovery(game_state),
             // Turn
             Some(Procedure::Turn) => turn_discovery(game_state),
-            // TODO: Block, Movement, Pass, and Special
+            // Special
+            Some(Procedure::Reroll) => reroll_discovery(game_state),
+            Some(Procedure::Ejection) => ejection_discovery(game_state),
+            // TODO: Block, Movement and Pass
             // Errors
             Some(p) => Err(format!("Procedure not supported {p:?} in action discovery")),
             _ => Err("No procedure found in actions discovery.".to_string()),
