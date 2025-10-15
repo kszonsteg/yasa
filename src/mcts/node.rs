@@ -46,6 +46,29 @@ impl MCTSNode {
             exploitation + exploration
         }
     }
+
+    pub fn is_fully_expanded(&self) -> bool {
+        match self.node_type {
+            NodeType::Decision => self.is_terminal || self.untried_actions.is_empty(),
+            NodeType::Chance => !self.chance_children.is_empty(), // Chance nodes expand all outcomes at once
+        }
+    }
+
+    pub fn new_chance_node(state: GameState, parent: Option<usize>, probability: f64) -> Self {
+        MCTSNode {
+            state,
+            node_type: NodeType::Chance,
+            parent,
+            children: HashMap::new(),
+            chance_children: Vec::new(),
+            visits: 0,
+            total_score: 0.0,
+            untried_actions: Vec::new(),
+            is_terminal: false,
+            chance_probability: probability,
+        }
+    }
+
     pub fn new_decision_node(state: GameState, parent: Option<usize>) -> Result<Self, String> {
         let mut node = MCTSNode {
             state: state.clone(),
@@ -87,20 +110,5 @@ impl MCTSNode {
             || game_state.procedure == Some(Procedure::Turnover);
 
         Ok(node)
-    }
-
-    pub fn new_chance_node(state: GameState, parent: Option<usize>, probability: f64) -> Self {
-        MCTSNode {
-            state,
-            node_type: NodeType::Chance,
-            parent,
-            children: HashMap::new(),
-            chance_children: Vec::new(),
-            visits: 0,
-            total_score: 0.0,
-            untried_actions: Vec::new(),
-            is_terminal: false,
-            chance_probability: probability,
-        }
     }
 }
