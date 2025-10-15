@@ -20,7 +20,9 @@ class MCTSDecisionStrategy(DecisionStrategy):
         )
         try:
             return self.parser.parse_action(
-                json.loads(get_mcts_action(state=json_state))["action"],
+                json.loads(get_mcts_action(state=json_state, time_limit=1000))[
+                    "action"
+                ],
                 game.state,
             )
         except ValueError:

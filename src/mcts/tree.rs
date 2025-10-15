@@ -155,15 +155,15 @@ impl MCTSTree {
         let action = self.nodes[node_index].untried_actions.remove(0);
         let current_state: GameState = self.nodes[node_index].state.clone();
 
-        // TODO: Apply the action to create the new state
         let child_node = MCTSNode::new_decision_node(current_state, Some(node_index))?;
         let child_index = self.nodes.len();
         self.nodes.push(child_node);
 
         // Add the child to the parent's children map
         self.nodes[node_index].children.insert(action, child_index);
-
-        Ok(child_index)
+        // TODO: Apply the action to create the new state
+        todo!();
+        // Ok(child_index)
     }
 
     fn expand_chance_node(&mut self, _chance_node_index: usize) -> Result<usize, String> {

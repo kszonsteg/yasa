@@ -21,8 +21,8 @@ if __name__ == "__main__":
 
     # Play test games
     for i in range(1000):  # Reduced from 1000 for testing
-        away_agent = cast(YasaRandom, botbowl.make_bot("yasa_random"))
-        home_agent = cast(YasaRandom, botbowl.make_bot("yasa_random"))
+        away_agent = cast(YasaRandom, botbowl.make_bot("yasa_mcts"))
+        home_agent = cast(YasaRandom, botbowl.make_bot("yasa_mcts"))
 
         game = botbowl.Game(
             f"{i}",

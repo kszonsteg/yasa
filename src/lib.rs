@@ -34,11 +34,10 @@ fn get_actions(state: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn get_mcts_action(json_state: &str, time_limit_ms: Option<u64>) -> PyResult<String> {
-    let game_state = GameState::from_json(json_state);
+fn get_mcts_action(state: &str, time_limit: u64) -> PyResult<String> {
+    let game_state = GameState::from_json(state);
     match game_state {
         Ok(game_state) => {
-            let time_limit = time_limit_ms.unwrap_or(1000);
             let mut mcts = MCTSSearch::with_config(1.4, time_limit);
             let result = mcts.search(game_state);
 
