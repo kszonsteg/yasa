@@ -16,10 +16,19 @@ pub fn turn_discovery(game_state: &mut GameState) -> Result<(), String> {
                 .as_ref()
                 .ok_or("Missing turn state in turn_discovery")?;
             for (player_id, player) in &team.players_by_id {
-                if player.state.used {
+                if player.state.used
+                    // not on pitch
+                    || player.position.is_none()
+                {
                     continue;
                 }
                 let player_position = player.position.ok_or("Player doesn't have position")?;
+
+                if turn_state.blitz
+                    && game_state.get_team_tackle_zones_at(&team.team_id, &player_position) > 0
+                {
+                    continue;
+                }
 
                 game_state.available_actions.push(Action::new(
                     ActionType::StartMove,
@@ -62,9 +71,10 @@ pub fn turn_discovery(game_state: &mut GameState) -> Result<(), String> {
                 if !turn_state.quick_snap
                     && !turn_state.blitz
                     && player.state.up
-                    && !game_state
+                    && game_state
                         .get_adjacent_opponents(current_team_id, &player_position)?
-                        .is_empty()
+                        .iter()
+                        .any(|opp| opp.state.up)
                 {
                     game_state.available_actions.push(Action::new(
                         ActionType::StartBlock,

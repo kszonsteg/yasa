@@ -1,6 +1,6 @@
 from typing import Any
 
-from botbowl import Dugout, GameState, Player, Team, procedure
+from botbowl import Dugout, GameState, Player, Procedure, Team, procedure
 
 
 class GameStateSerializer:
@@ -30,7 +30,12 @@ class GameStateSerializer:
             "game_over": game_state.game_over,
             "weather": game_state.weather.name,
             "balls": [
-                {"position": ball.position, "is_carried": ball.is_carried}
+                {
+                    "position": {"x": ball.position.x, "y": ball.position.y}
+                    if ball.position
+                    else None,
+                    "is_carried": ball.is_carried,
+                }
                 for ball in game_state.pitch.balls
             ],
         }
@@ -41,10 +46,12 @@ class GameStateSerializer:
         players_by_id = {}
         player: Player
         for player in team.players:
+            if player.position is None:
+                continue
             players_by_id[player.player_id] = {
                 "player_id": player.player_id,
                 "role": player.role.name,
-                "skills": player.role.skills,  # Map role_skills to skills
+                "skills": [skill.name for skill in player.role.skills],
                 "ma": player.role.ma,
                 "st": player.role.st,
                 "ag": player.role.ag,
@@ -60,7 +67,9 @@ class GameStateSerializer:
                     ],
                     "has_blocked": player.state.has_blocked,
                 },
-                "position": {"x": player.position.x, "y": player.position.y},
+                "position": {"x": player.position.x, "y": player.position.y}
+                if player.position
+                else None,
             }
 
         return {
@@ -123,7 +132,9 @@ class GameStateSerializer:
     @staticmethod
     def _get_turn_state(game_state: GameState) -> dict[str, Any]:
         """Extract turn state information."""
-        last_procedure = game_state.stack.items[-1] if game_state.stack.items else None
+        last_procedure: Procedure | None = (
+            game_state.stack.items[-1] if game_state.stack.items else None
+        )
 
         if isinstance(last_procedure, procedure.Turn):
             return {

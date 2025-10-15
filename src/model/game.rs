@@ -343,6 +343,9 @@ impl GameState {
                 }
 
                 let to_position = Square::new(x, y);
+                if position == &to_position {
+                    continue;
+                }
                 let distance = self.get_pass_distance(position, &to_position)?;
                 if distances_allowed.contains(&distance) {
                     squares.push(to_position);

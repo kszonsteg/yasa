@@ -28,9 +28,14 @@ class RandomDecisionStrategy(DecisionStrategy):
         json_state = json.dumps(
             self.serializer.to_json(game.state),
         )
-        actions = self.parser.parse_actions(
-            json.loads(get_actions(json_state)),
-            game.state,
-        )
-        self.validator.compare_actions(game, actions)
-        return choice(actions)
+        try:
+            actions = self.parser.parse_actions(
+                json.loads(get_actions(json_state))["actions"],
+                game.state,
+            )
+            self.validator.compare_actions(game, actions)
+            return choice(actions)
+        except ValueError:
+            with open("error.json", "w") as f:
+                f.write(json_state)
+            raise

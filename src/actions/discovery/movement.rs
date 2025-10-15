@@ -47,13 +47,7 @@ pub fn move_discovery(game_state: &mut GameState) -> Result<(), String> {
 pub fn handoff_discovery(game_state: &mut GameState) -> Result<(), String> {
     move_discovery(game_state)?;
 
-    if game_state
-        .turn_state
-        .as_ref()
-        .ok_or("Missing turn state in handoff discovery")?
-        .handoff_available
-        && game_state.is_active_player_carrying_ball()
-    {
+    if game_state.is_active_player_carrying_ball() {
         let team_id = game_state
             .current_team_id
             .as_ref()
@@ -84,13 +78,7 @@ pub fn blitz_discovery(game_state: &mut GameState) -> Result<(), String> {
 
     let active_player = game_state.get_active_player()?;
 
-    if game_state
-        .turn_state
-        .as_ref()
-        .ok_or("Missing turn state in handoff discovery")?
-        .blitz_available
-        && !active_player.state.has_blocked
-    {
+    if !active_player.state.has_blocked {
         let team_id = game_state
             .current_team_id
             .as_ref()

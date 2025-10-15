@@ -27,11 +27,13 @@ pub fn setup_discovery(game_state: &mut GameState) -> Result<(), String> {
         game_state.available_actions = vec![
             Action::new(ActionType::SetupFormationZone, None, None),
             Action::new(ActionType::SetupFormationSpread, None, None),
+            Action::new(ActionType::EndSetup, None, None),
         ];
     } else {
         game_state.available_actions = vec![
             Action::new(ActionType::SetupFormationWedge, None, None),
             Action::new(ActionType::SetupFormationLine, None, None),
+            Action::new(ActionType::EndSetup, None, None),
         ];
     }
 

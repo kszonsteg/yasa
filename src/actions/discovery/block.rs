@@ -34,6 +34,9 @@ pub fn block_action_discovery(game_state: &mut GameState) -> Result<(), String> 
                 Some(opp_position),
             ));
         }
+        game_state
+            .available_actions
+            .push(Action::new(ActionType::EndPlayerTurn, None, None));
         Ok(())
     }
 }
@@ -96,7 +99,7 @@ pub fn push_discovery(game_state: &mut GameState) -> Result<(), String> {
         if include {
             if square.is_out_of_bounds() {
                 squares_out.push(square);
-            } else if game_state.get_player_at(&square).is_ok() {
+            } else if game_state.get_player_at(&square).is_err() {
                 squares_empty.push(square);
             }
             all_valid_squares.push(square);
