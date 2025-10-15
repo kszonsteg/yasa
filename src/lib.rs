@@ -1,6 +1,7 @@
 use pyo3::{exceptions::PyValueError, prelude::*};
 
 use crate::actions::core::registry::ActionRegistry;
+use crate::mcts::search::MCTSSearch;
 use crate::model::game::GameState;
 use serde_json::json;
 
@@ -20,11 +21,10 @@ fn get_actions(state: &str) -> PyResult<String> {
                 Err(e) => return Err(PyValueError::new_err(e.to_string())),
             }
             let actions = game_state.available_actions;
-            // Return a standardized JSON object: { "actions": [...] }
             let wrapper = json!({"actions": actions});
             match serde_json::to_string(&wrapper) {
                 Ok(s) => Ok(s),
-                Err(e) => Err(PyValueError::new_err(format!("{e}"))),
+                Err(e) => Err(PyValueError::new_err(e.to_string())),
             }
         }
         Err(e) => Err(PyValueError::new_err(format!(
@@ -33,9 +33,34 @@ fn get_actions(state: &str) -> PyResult<String> {
     }
 }
 
+#[pyfunction]
+fn get_mcts_action(json_state: &str, time_limit_ms: Option<u64>) -> PyResult<String> {
+    let game_state = GameState::from_json(json_state);
+    match game_state {
+        Ok(game_state) => {
+            let time_limit = time_limit_ms.unwrap_or(1000);
+            let mut mcts = MCTSSearch::with_config(1.4, time_limit);
+            let result = mcts.search(game_state);
+
+            match result {
+                Ok(action) => {
+                    let wrapper = json!({"action": action});
+                    match serde_json::to_string(&wrapper) {
+                        Ok(s) => Ok(s),
+                        Err(e) => Err(PyValueError::new_err(e.to_string())),
+                    }
+                }
+                Err(e) => Err(PyValueError::new_err(e.to_string())),
+            }
+        }
+        Err(e) => Err(PyValueError::new_err(e.to_string())),
+    }
+}
+
 /// A Python module implemented in Rust.
 #[pymodule]
 fn yasa_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_actions, m)?)?;
+    m.add_function(wrap_pyfunction!(get_mcts_action, m)?)?;
     Ok(())
 }
