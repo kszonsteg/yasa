@@ -20,18 +20,19 @@ pub fn block_action_discovery(game_state: &mut GameState) -> Result<(), String> 
             .position
             .as_ref()
             .ok_or("Missing player position in block discovery")?;
-        // TODO: Get rid of this clone
-        let gs = game_state.clone();
-        let opponents = gs.get_adjacent_opponents(player_team_id, position)?;
+        let opp_positions: Vec<Square> = game_state
+            .get_adjacent_opponents(player_team_id, position)?
+            .iter()
+            .filter(|opp| opp.state.up)
+            .filter_map(|opp| opp.position)
+            .collect();
 
-        for opp in opponents {
-            if opp.state.up {
-                game_state.available_actions.push(Action::new(
-                    ActionType::Block,
-                    None,
-                    opp.position,
-                ));
-            }
+        for opp_position in opp_positions {
+            game_state.available_actions.push(Action::new(
+                ActionType::Block,
+                None,
+                Some(opp_position),
+            ));
         }
         Ok(())
     }

@@ -2,6 +2,7 @@ use crate::model::action::Action;
 use crate::model::constants::{ARENA_HEIGHT, ARENA_WIDTH};
 use crate::model::enums::ActionType;
 use crate::model::game::GameState;
+use crate::model::position::Square;
 
 pub fn move_discovery(game_state: &mut GameState) -> Result<(), String> {
     let player = game_state.get_active_player()?.clone();
@@ -61,14 +62,17 @@ pub fn handoff_discovery(game_state: &mut GameState) -> Result<(), String> {
             .get_active_player()?
             .position
             .ok_or("Missing active player position in handoff discvoery")?;
-        // TODO: Get rid of this clone
-        let gs = game_state.clone();
-        for teammate in gs.get_adjacent_teammates(team_id, &active_player_position)? {
-            if teammate.state.up {
-                game_state
-                    .available_actions
-                    .insert(0, Action::new(ActionType::Handoff, None, teammate.position));
-            }
+        let team_positions: Vec<Square> = game_state
+            .get_adjacent_teammates(team_id, &active_player_position)?
+            .iter()
+            .filter(|teammate| teammate.state.up)
+            .filter_map(|teammate| teammate.position)
+            .collect();
+        for team_position in team_positions {
+            game_state.available_actions.insert(
+                0,
+                Action::new(ActionType::Handoff, None, Some(team_position)),
+            );
         }
     }
 
@@ -99,15 +103,16 @@ pub fn blitz_discovery(game_state: &mut GameState) -> Result<(), String> {
                 .position
                 .as_ref()
                 .ok_or("Active player missing position in blitz discovery")?;
-            // TODO: get rid of this copy
-            let gs = game_state.clone();
-            let adjacent_opponents = gs.get_adjacent_opponents(team_id, position)?;
-            for opponent in adjacent_opponents {
-                if opponent.state.up {
-                    game_state
-                        .available_actions
-                        .insert(0, Action::new(ActionType::Block, None, opponent.position));
-                }
+            let opp_positions: Vec<Square> = game_state
+                .get_adjacent_opponents(team_id, position)?
+                .iter()
+                .filter(|opp| opp.state.up)
+                .filter_map(|opp| opp.position)
+                .collect();
+            for opp_position in opp_positions {
+                game_state
+                    .available_actions
+                    .insert(0, Action::new(ActionType::Block, None, Some(opp_position)));
             }
         }
     }
@@ -133,18 +138,16 @@ pub fn foul_discovery(game_state: &mut GameState) -> Result<(), String> {
             .position
             .as_ref()
             .ok_or("Missing player position in block discovery")?;
-        // TODO: Get rid of this clone
-        let gs = game_state.clone();
-        let opponents = gs.get_adjacent_opponents(player_team_id, position)?;
-
-        for opp in opponents {
-            if !opp.state.up {
-                game_state.available_actions.push(Action::new(
-                    ActionType::Foul,
-                    None,
-                    opp.position,
-                ));
-            }
+        let opp_positions: Vec<Square> = game_state
+            .get_adjacent_opponents(player_team_id, position)?
+            .iter()
+            .filter(|opp| !opp.state.up)
+            .filter_map(|opp| opp.position)
+            .collect();
+        for opp_position in opp_positions {
+            game_state
+                .available_actions
+                .insert(0, Action::new(ActionType::Foul, None, Some(opp_position)));
         }
         Ok(())
     }
