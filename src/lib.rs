@@ -5,6 +5,7 @@ use crate::model::game::GameState;
 use serde_json::json;
 
 pub mod actions;
+pub mod mcts;
 pub mod model;
 
 #[pyfunction]
