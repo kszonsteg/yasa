@@ -1,3 +1,3 @@
-from yasa.bot import YasaRandom
+from yasa.bot import YasaMCTS, YasaRandom
 
-__all__ = ["YasaRandom"]
+__all__ = ["YasaRandom", "YasaMCTS"]

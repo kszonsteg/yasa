@@ -503,6 +503,20 @@ wheels = [
 ]
 
 [[package]]
+name = "pyjnius"
+version = "1.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/a2/22bcf51dd6628e1ab9932a5e3e3e0b062ca4e2ef80e1bc9f7a3cc2748c57/pyjnius-1.7.0.tar.gz", hash = "sha256:9f81708484b0a84ead3eb0ba84e53ac579e4c43ca10c746f9898a9f3dd50f54d", size = 66363, upload-time = "2025-09-08T19:33:14.675Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b9/a5/b3a6d9e92cc02400a6586f09c5ae0cdc3a9c7999bc79c6126345c972c6d2/pyjnius-1.7.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:895543816feb0c3a6e04abebe93c2fa331413efd9d8e94a2454cfcf16145cc6e", size = 447601, upload-time = "2025-09-08T19:32:03.565Z" },
+    { url = "https://files.pythonhosted.org/packages/45/ec/b0a8fcaa4ef8a28583791914712cf8aae0cc93ff4d0218f14256d923a35b/pyjnius-1.7.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:3e6a3a936cc1763f4f04dda7d3fe91e403f8fe6a11c4b35071f4864f381f88da", size = 239590, upload-time = "2025-09-08T19:32:05.427Z" },
+    { url = "https://files.pythonhosted.org/packages/82/f5/45035802b48b35a463f023365a37bede87ca7b3fc4a48b7ec0c155101f40/pyjnius-1.7.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:438a64de79710c2d6ef7683a088c4a4e62e56c1b07fffa01f5fa7cb4db456b46", size = 1511958, upload-time = "2025-09-08T19:32:07.174Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/96/d3597b47a8e7dcc73f0f1f3dfd89cd25a78586b90cd2760c7fd89d5edac5/pyjnius-1.7.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:95049134096a0431a9fc91a350f36da3155946e30b205573144f5e6418e692d1", size = 1557426, upload-time = "2025-09-08T19:32:08.523Z" },
+    { url = "https://files.pythonhosted.org/packages/87/c3/b4c81b50385c9021842205d7b80286d9a0b2e8348235a5e2a76ea8115bd8/pyjnius-1.7.0-cp310-cp310-win32.whl", hash = "sha256:80870ed845206c4c71f4dd20403cdf534e0e43b7f700d786df5d62aa6bf7732a", size = 175110, upload-time = "2025-09-08T19:32:10.248Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/bf/4e51fcfd9c00458ed7d4fb5bfe2c2acd98fd6e8b26b4b62cb81eee29a774/pyjnius-1.7.0-cp310-cp310-win_amd64.whl", hash = "sha256:997c1fee5d5f607a54b58bcf60c77d60b9ed33101a05b312a500c4dcf77da8da", size = 212630, upload-time = "2025-09-08T19:32:11.808Z" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.2.5"
 source = { registry = "https://pypi.org/simple" }
@@ -725,6 +739,9 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+bots = [
+    { name = "pyjnius" },
+]
 dev = [
     { name = "maturin" },
     { name = "pre-commit" },
@@ -739,6 +756,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+bots = [{ name = "pyjnius", specifier = ">=1.7.0" }]
 dev = [
     { name = "maturin", specifier = ">=1.9.6" },
     { name = "pre-commit", specifier = ">=4.3.0" },
