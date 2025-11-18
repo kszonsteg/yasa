@@ -1,4 +1,3 @@
-use crate::actions::core::registry::ActionRegistry;
 use crate::model::action::Action;
 use crate::model::enums::{ActionType, Procedure};
 use crate::model::game::GameState;
@@ -83,14 +82,11 @@ impl MCTSNode {
             chance_probability: 1.0,
         };
 
-        // Initialize available actions
-        let mut game_state = state;
-        let action_registry = ActionRegistry::new();
-        action_registry.discover_actions(&mut game_state)?;
-        node.untried_actions = game_state
+        node.untried_actions = state
             .available_actions
             .iter()
-            // tree pruning
+            // tree pruning with not supported actions.
+            // TODO: add support for Blitz and Handoff at minimum.
             .filter(|action| {
                 ![
                     ActionType::StartBlitz,
@@ -103,11 +99,11 @@ impl MCTSNode {
             .cloned()
             .collect();
         node.is_terminal = node.untried_actions.is_empty()
-            || game_state.game_over
-            // End of turn is terminal for now.
-            || game_state.procedure == Some(Procedure::EndTurn)
-            || game_state.procedure == Some(Procedure::Touchdown)
-            || game_state.procedure == Some(Procedure::Turnover);
+            || state.game_over
+            // The end of turn is terminal.
+            || state.procedure == Some(Procedure::EndTurn)
+            || state.procedure == Some(Procedure::Touchdown)
+            || state.procedure == Some(Procedure::Turnover);
 
         Ok(node)
     }

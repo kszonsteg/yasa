@@ -11,6 +11,8 @@ use crate::actions::discovery::setup::{
 };
 use crate::actions::discovery::special::{ejection_discovery, reroll_discovery};
 use crate::actions::discovery::turn::turn_discovery;
+use crate::actions::rollout::model::RolloutOutcome;
+use crate::model::action::Action;
 use crate::model::enums::Procedure;
 use crate::model::game::GameState;
 
@@ -28,6 +30,8 @@ impl ActionRegistry {
         ActionRegistry {}
     }
 
+    /// Discovers actions that can be executed on the game state.
+    /// Returns an error if the procedure is not supported.
     pub fn discover_actions(&self, game_state: &mut GameState) -> Result<(), String> {
         match game_state.procedure {
             // Setup
@@ -59,5 +63,24 @@ impl ActionRegistry {
             Some(p) => Err(format!("Procedure not supported {p:?} in action discovery")),
             _ => Err("No procedure found in actions discovery.".to_string()),
         }
+    }
+
+    /// Executes a single action on the game state.
+    /// Returns an error if the action is not supported.
+    pub fn execute_action(
+        &self,
+        _game_state: &mut GameState,
+        _action: &Action,
+    ) -> Result<(), String> {
+        todo!("Implement execute_action")
+    }
+
+    /// Returns a list of possible outcomes with probabilities for a game state.
+    /// For example, returns the list with possible block rolls outcomes from a block action.
+    pub fn rollout_chance_outcomes(
+        &self,
+        _game_state: &GameState,
+    ) -> Result<Vec<RolloutOutcome>, String> {
+        todo!("Implement rollout_chance_outcomes")
     }
 }

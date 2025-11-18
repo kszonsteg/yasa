@@ -1,7 +1,8 @@
+use crate::actions::core::registry::ActionRegistry;
 use crate::mcts::evaluation::GameEvaluator;
 use crate::mcts::node::{MCTSNode, NodeType};
 use crate::model::action::Action;
-use crate::model::enums::ActionType;
+use crate::model::enums::{ActionType, Procedure};
 use crate::model::game::GameState;
 
 pub struct MCTSTree {
@@ -9,6 +10,7 @@ pub struct MCTSTree {
     pub root_index: usize,
     pub exploration_constant: f64,
     evaluator: GameEvaluator,
+    action_registry: ActionRegistry,
 }
 
 impl MCTSTree {
@@ -20,6 +22,7 @@ impl MCTSTree {
             root_index: 0,
             exploration_constant,
             evaluator: GameEvaluator::new(),
+            action_registry: ActionRegistry::new(),
         })
     }
 
@@ -153,21 +156,70 @@ impl MCTSTree {
         }
 
         let action = self.nodes[node_index].untried_actions.remove(0);
-        let current_state: GameState = self.nodes[node_index].state.clone();
+        let mut current_state: GameState = self.nodes[node_index].state.clone();
+        self.action_registry
+            .execute_action(&mut current_state, &action)?;
+        self.action_registry.discover_actions(&mut current_state)?;
 
-        let child_node = MCTSNode::new_decision_node(current_state, Some(node_index))?;
-        let child_index = self.nodes.len();
-        self.nodes.push(child_node);
+        // TODO: Check if the current procedure is a random procedure
+        let is_random_procedure = matches!(
+            current_state.procedure,
+            Some(Procedure::GFI)
+                | Some(Procedure::Dodge)
+                | Some(Procedure::Pickup)
+                | Some(Procedure::Bounce)
+        );
 
-        // Add the child to the parent's children map
-        self.nodes[node_index].children.insert(action, child_index);
-        // TODO: Apply the action to create the new state
-        todo!();
-        // Ok(child_index)
+        if is_random_procedure {
+            // Create a chance node instead of a decision node
+            let chance_node = MCTSNode::new_chance_node(current_state, Some(node_index), 1.0);
+            let child_index = self.nodes.len();
+            self.nodes.push(chance_node);
+            self.nodes[node_index].children.insert(action, child_index);
+            Ok(child_index)
+        } else {
+            // Create a normal decision node
+            let child_node = MCTSNode::new_decision_node(current_state, Some(node_index))?;
+            let child_index = self.nodes.len();
+            self.nodes.push(child_node);
+            self.nodes[node_index].children.insert(action, child_index);
+            Ok(child_index)
+        }
     }
 
-    fn expand_chance_node(&mut self, _chance_node_index: usize) -> Result<usize, String> {
-        todo!()
+    fn expand_chance_node(&mut self, chance_node_index: usize) -> Result<usize, String> {
+        // Get procedure outcomes from the action registry
+        let state = self.nodes[chance_node_index].state.clone();
+        let outcomes = self.action_registry.rollout_chance_outcomes(&state)?;
+
+        if outcomes.is_empty() {
+            return Err("No outcomes from procedure execution".to_string());
+        }
+
+        let mut first_child_index = None;
+
+        for outcome in outcomes {
+            // Create a decision node for each outcome
+            // TODO: Chaining random outcomes like dodge and gfi.
+            let child_node =
+                MCTSNode::new_decision_node(outcome.resulting_state, Some(chance_node_index))?;
+            let child_index = self.nodes.len();
+
+            // Set the chance probability for this outcome
+            let mut child_node_with_prob = child_node;
+            child_node_with_prob.chance_probability = outcome.probability;
+
+            self.nodes.push(child_node_with_prob);
+            self.nodes[chance_node_index]
+                .chance_children
+                .push(child_index);
+
+            if first_child_index.is_none() {
+                first_child_index = Some(child_index);
+            }
+        }
+
+        first_child_index.ok_or("Failed to create any child nodes".to_string())
     }
 
     pub fn evaluate(&self, node_index: usize) -> Result<f64, String> {
