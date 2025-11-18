@@ -20,7 +20,7 @@ class YasaBot(Agent):
     ):
         super().__init__(name)
         self.__time_limit = time_limit
-        self.my_team: Team | None = None
+        self.agent_team: Team | None = None
         self.decision_strategy = decision_strategy
 
     @property
@@ -35,11 +35,13 @@ class YasaBot(Agent):
 
     def act(self, game: Game) -> Action:
         """Main action method that delegates to the decision strategy."""
-        return self.decision_strategy.choose_action(game, self.time_limit)
+        return self.decision_strategy.choose_action(
+            game, self.time_limit, self.agent_team
+        )
 
     def new_game(self, game: Game, team: Team) -> None:
         """Called when a new game starts."""
-        self.my_team = team
+        self.agent_team = team
 
     def end_game(self, game: Game) -> None:
         """Called when a game ends."""

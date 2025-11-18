@@ -1,7 +1,7 @@
 import json
 from random import choice
 
-from botbowl import Action, Game
+from botbowl import Action, Game, Team
 
 from yasa.components import ActionValidator
 from yasa.strategies.base import DecisionStrategy
@@ -11,8 +11,8 @@ from yasa.yasa_core import get_actions
 class RandomDecisionStrategy(DecisionStrategy):
     """Simple random decision strategy.
 
-    It gets all of the possible actions using rust and validates,
-    if the actions from the Rust implementation matches the originial ones.
+    It gets all the possible actions using rust and validates
+    if the actions from the Rust implementation match the original ones.
     """
 
     def __init__(self):
@@ -23,6 +23,7 @@ class RandomDecisionStrategy(DecisionStrategy):
         self,
         game: Game,
         time_limit: int,
+        agent_team: Team,
     ) -> Action:
         """Choose a random action from available actions."""
         json_state = json.dumps(

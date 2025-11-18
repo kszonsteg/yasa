@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from botbowl import Action, Game
+from botbowl import Action, Game, Team
 
 from yasa.components import ActionParser, GameStateSerializer
 
@@ -13,10 +13,6 @@ class DecisionStrategy(ABC):
         self.parser = ActionParser()
 
     @abstractmethod
-    def choose_action(
-        self,
-        game: Game,
-        time_limit: int,
-    ) -> Action:
+    def choose_action(self, game: Game, time_limit: int, agent_team: Team) -> Action:
         """Choose an action from the available actions."""
         pass
