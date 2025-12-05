@@ -1,6 +1,6 @@
 from typing import Any
 
-from botbowl import Dugout, GameState, Player, Procedure, Team, procedure
+from botbowl import Dugout, GameState, Player, Team, procedure
 
 
 class GameStateSerializer:
@@ -132,19 +132,16 @@ class GameStateSerializer:
     @staticmethod
     def _get_turn_state(game_state: GameState) -> dict[str, Any]:
         """Extract turn state information."""
-        last_procedure: Procedure | None = (
-            game_state.stack.items[-1] if game_state.stack.items else None
-        )
-
-        if isinstance(last_procedure, procedure.Turn):
+        turn = GameStateSerializer.get_latest_turn(game_state)
+        if turn:
             return {
                 "turn_state": {
-                    "blitz": last_procedure.blitz,
-                    "quick_snap": last_procedure.quick_snap,
-                    "blitz_available": last_procedure.blitz_available,
-                    "pass_available": last_procedure.pass_available,
-                    "foul_available": last_procedure.foul_available,
-                    "handoff_available": last_procedure.handoff_available,
+                    "blitz": turn.blitz,
+                    "quick_snap": turn.quick_snap,
+                    "blitz_available": turn.blitz_available,
+                    "pass_available": turn.pass_available,
+                    "foul_available": turn.foul_available,
+                    "handoff_available": turn.handoff_available,
                 }
             }
         return {"turn_state": None}
@@ -195,3 +192,10 @@ class GameStateSerializer:
             )
 
         return result
+
+    @staticmethod
+    def get_latest_turn(game_state: GameState) -> procedure.Turn | None:
+        for i in range(len(game_state.stack.items) - 1, -1, -1):
+            if isinstance(game_state.stack.items[i], procedure.Turn):
+                return game_state.stack.items[i]
+        return None

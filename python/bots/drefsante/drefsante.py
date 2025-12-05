@@ -15,6 +15,8 @@
 #                                                                                                          #
 ############################################################################################################
 import configparser
+import json
+import logging
 from pathlib import Path
 
 import botbowl
@@ -31,6 +33,7 @@ from botbowl import (
     Square,
     WeatherType,
 )
+from yasa.components.serializer import GameStateSerializer
 
 config = configparser.ConfigParser()
 result = config.read(Path(__file__).with_suffix(".cfg"))
@@ -47,6 +50,11 @@ from jnius import JavaClass, JavaMethod, MetaJavaClass, autoclass  # noqa: E402,
 
 TEMPORARY_FOLDER = Path(__file__).parent / config["setup"]["temporaryFolder"]
 TEMPORARY_FOLDER.mkdir(parents=True, exist_ok=True)
+
+log_dir = Path() / "logs"
+log_dir.mkdir(exist_ok=True)
+
+logger = logging.getLogger("drefsante")
 
 
 class FFAIProxy(JavaClass, metaclass=MetaJavaClass):
@@ -159,6 +167,15 @@ class DrefsanteBot(ProcBot):
         self.ffaiProxy = FFAIProxy()
 
         self.temporaryFolder = TEMPORARY_FOLDER
+
+    def act(self, game: Game) -> Action:
+        log_file = log_dir / f"game_{game.game_id}.jsonl"
+        game_state_json = GameStateSerializer.to_json(game.state)
+        with open(log_file, "a") as f:
+            json.dump(game_state_json, f)
+            f.write("\n")
+
+        return super().act(game)
 
     def coin_toss_flip(self, game):
         return Action(ActionType.TAILS)
@@ -291,7 +308,7 @@ class DrefsanteBot(ProcBot):
             and game.get_ball_position() is not None
             and game.get_ball_position() == unit.position
         ):
-            print("Knocked out player has the ball!!!")
+            logger.debug("Knocked out player has the ball!!!")
 
         tempArray.append(unit.num_moves_left(include_gfi=True))
         tempArray.append(unit.num_moves_left(include_gfi=False))
@@ -416,7 +433,9 @@ class DrefsanteBot(ProcBot):
 
         if self.setup_actions:
             action = self.setup_actions.pop(0)
-            print("Executing action ", action.action_type, "; Player = ", action.player)
+            logger.debug(
+                "Executing action ", action.action_type, "; Player = ", action.player
+            )
             return action
 
         # Due to bug https://github.com/njustesen/botbowl/issues/240
@@ -513,7 +532,7 @@ class DrefsanteBot(ProcBot):
             )  # self.gateway.jvm.be.drefsante.bloodbowl.presenter.Lrb6Rules.isTeamWillSelectDice(self.getPlayer(game, attacker),
 
             if not isTeamWillSelectDice:
-                print("Team will NOT Select dice ")
+                logger.debug("Team will NOT Select dice ")
 
             isReroll = self.ffaiProxy.askRerollForBlock(
                 dices,
@@ -523,7 +542,7 @@ class DrefsanteBot(ProcBot):
             )
 
             if isReroll:
-                print("Using reroll because bad dices for block")
+                logger.debug("Using reroll because bad dices for block")
                 return Action(ActionType.USE_REROLL)
 
             return Action(ActionType.DONT_USE_REROLL)
@@ -604,7 +623,7 @@ class DrefsanteBot(ProcBot):
             else:
                 # Planned action is None: can occur for example if 'Wild Animal' has failed
                 # -> then we remove all planned action and make another plan
-                print("Planned action is not possible!!!")
+                logger.debug("Planned action is not possible!!!")
                 self.actions.clear()
 
         # Split logic depending on offense, defense, and loose ball - and plan actions
@@ -655,7 +674,7 @@ class DrefsanteBot(ProcBot):
     def _make_plan(self, game):
         activeplayerName = self.getActivePlayerName(game)
         if activeplayerName != "" and self.isUndoOptionAvailable(game):
-            print("bug - to investigate")
+            logger.debug("bug - to investigate")
             self.actions.append(
                 Action(ActionType.END_PLAYER_TURN, player=game.get_active_player())
             )
@@ -664,7 +683,7 @@ class DrefsanteBot(ProcBot):
         self.updateModel(game)
         actionAI = self.ffaiProxy.playTurn(activeplayerName)
 
-        print(actionAI)
+        logger.debug(actionAI)
         actions = actionAI.split("\n")
         for action in actions:
             keys = action.split(";")
@@ -698,7 +717,7 @@ class DrefsanteBot(ProcBot):
             elif actionKey == "STAND_UP":
                 mover = self.getUnitFromName(game, keys[1])
                 if mover.state.up:
-                    print("Try to rise up player not prone")
+                    logger.debug("Try to rise up player not prone")
                 self.actions.append(Action(ActionType.STAND_UP, player=mover))
             elif actionKey == "BLOCK":
                 position = self.getPosition(int(keys[1]))
@@ -754,10 +773,12 @@ class DrefsanteBot(ProcBot):
             action = self.protect(game, self._get_next_action())
             return action
 
-        print("player action !!!!")
+        logger.debug("player action !!!!")
 
         if game.get_active_player().state.has_blocked:
-            print(game.get_active_player().name, " has blitzed and finish to play")
+            logger.debug(
+                game.get_active_player().name, " has blitzed and finish to play"
+            )
             # return self.turn(game)
             # return Action(ActionType.END_PLAYER_TURN, player=game.get_active_player())
         return self.turn(game)
@@ -786,7 +807,7 @@ class DrefsanteBot(ProcBot):
             # 01-Sep-2021 Looks it will never happen ????
             # isReroll = self.presenter.getSelectedTeam().getCoachIA().getDialoger().askRerollForBlock(dices, self.getPlayer(game,attacker), self.getPlayer(game,defender), isTeamWillSelectDice)
 
-            print("check why we are here! Should not be possible!!!")
+            logger.debug("check why we are here! Should not be possible!!!")
             return Action(ActionType.USE_REROLL)
 
         result = self.ffaiProxy.askWhichDice(
@@ -796,7 +817,7 @@ class DrefsanteBot(ProcBot):
         action = Action(actions[result])
 
         if action is None:
-            print("Action is none in proc block !!!")
+            logger.debug("Action is none in proc block !!!")
 
         return action
 
@@ -852,10 +873,12 @@ class DrefsanteBot(ProcBot):
 
         for position in game.state.available_actions[0].positions:
             if self.getSquareId(position) == resultSquareId:
-                print("Position selected = ", position, "; SquareId = ", resultSquareId)
+                logger.debug(
+                    "Position selected = ", position, "; SquareId = ", resultSquareId
+                )
                 return Action(ActionType.PUSH, position=position)
 
-        print("none square to push???")
+        logger.debug("none square to push???")
 
     def follow_up(self, game):
         """
@@ -1026,7 +1049,7 @@ class DrefsanteBot(ProcBot):
         """
         Called when there is an error - should not occur normally, always investigate when here
         """
-        print(f"{action} is not allowed. ")
+        logger.debug(f"{action} is not allowed. ")
         return game._forced_action()
 
     def end_game(self, game: Game):

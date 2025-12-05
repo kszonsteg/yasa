@@ -14,3 +14,10 @@ error.json
 
 # logs
 bloodbowl.log
+
+# NN
+python/nn/value_network/artifacts
+python/nn/requirements.txt
+artifacts/
+data/
+exports/
