@@ -2,7 +2,7 @@ use super::player::Player;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Default)]
 pub struct Team {
     pub bribes: u8,
     pub players_by_id: HashMap<String, Player>,

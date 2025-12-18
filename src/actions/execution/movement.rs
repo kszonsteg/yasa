@@ -1,3 +1,4 @@
+use crate::actions::pathfinding::find_optimal_path;
 use crate::model::action::Action;
 use crate::model::constants::ARENA_WIDTH;
 use crate::model::enums::Procedure;
@@ -9,6 +10,40 @@ pub fn move_execution(game_state: &mut GameState, action: &Action) -> Result<(),
         .current_team_id
         .clone()
         .ok_or("Missing current team id")?;
+
+    let active_player_id = game_state
+        .active_player_id
+        .clone()
+        .ok_or("Missing active player id")?;
+
+    let needs_new_path = {
+        let active_player = game_state.get_active_player()?;
+        match &active_player.state.active_path {
+            Some(path) => {
+                // If the target doesn't match, we need a new path
+                path.target != position
+            }
+            None => true,
+        }
+    };
+
+    if needs_new_path {
+        let path = find_optimal_path(game_state, &active_player_id, &position)?;
+        let active_player = game_state.get_active_player_mut()?;
+        active_player.state.active_path = Some(path);
+    }
+
+    let next_position = {
+        let active_player = game_state.get_active_player()?;
+        let path = active_player
+            .state
+            .active_path
+            .as_ref()
+            .ok_or("No active path found")?;
+        path.next_position()
+            .copied()
+            .ok_or("No next position in path")?
+    };
 
     let gfi_required = {
         let active_player = game_state.get_active_player()?;
@@ -27,29 +62,32 @@ pub fn move_execution(game_state: &mut GameState, action: &Action) -> Result<(),
     if gfi_required {
         game_state.parent_procedure = game_state.procedure;
         game_state.procedure = Some(Procedure::GFI);
-        game_state.position = Some(vec![position.x, position.y]);
+        game_state.position = Some(vec![next_position.x, next_position.y]);
         return Ok(());
     }
 
-    // TODO: Implement those procedures
-    //
-    // if game_state.get_team_tackle_zones_at(&current_team_id, &position) > 0 {
-    //     game_state.procedure = Some(Procedure::Dodge);
-    //     game_state.position = Some(vec![position.x, position.y]);
-    //     return Ok(());
-    // }
-    //
-    // let requires_pickup = if let Ok(ball_position) = game_state.get_ball_position() {
-    //     ball_position == position && !game_state.is_ball_carried()
-    // } else {
-    //     false
-    // };
-    //
-    // if requires_pickup {
-    //     game_state.procedure = Some(Procedure::Pickup);
-    //     return Ok(());
-    // }
+    // Execute the move to the next position in the path
+    execute_move_to_position(game_state, next_position, &current_team_id)?;
 
+    // Advance the path
+    let active_player = game_state.get_active_player_mut()?;
+    if let Some(path) = &mut active_player.state.active_path {
+        path.advance();
+        // Clear path if we've reached the target
+        if path.is_complete() {
+            active_player.state.active_path = None;
+        }
+    }
+
+    Ok(())
+}
+
+/// Execute a move to a specific position (shared logic for regular moves and GFI)
+fn execute_move_to_position(
+    game_state: &mut GameState,
+    position: crate::model::position::Square,
+    current_team_id: &str,
+) -> Result<(), String> {
     let was_carrying = game_state.is_active_player_carrying_ball();
     let proc = game_state.procedure;
 
@@ -72,7 +110,7 @@ pub fn move_execution(game_state: &mut GameState, action: &Action) -> Result<(),
     if was_carrying || game_state.is_active_player_carrying_ball() {
         game_state.balls[0].position = Some(position);
 
-        let is_home = game_state.is_home_team(&current_team_id);
+        let is_home = game_state.is_home_team(&current_team_id.to_string());
         let is_touchdown = if is_home {
             position.x == 1
         } else {

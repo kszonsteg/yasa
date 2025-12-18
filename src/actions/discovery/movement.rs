@@ -1,3 +1,4 @@
+use crate::actions::pathfinding::get_reachable_squares;
 use crate::model::action::Action;
 use crate::model::constants::{ARENA_HEIGHT, ARENA_WIDTH};
 use crate::model::enums::ActionType;
@@ -6,10 +7,6 @@ use crate::model::position::Square;
 
 pub fn move_discovery(game_state: &mut GameState) -> Result<(), String> {
     let player = game_state.get_active_player()?.clone();
-    let player_position = player
-        .position
-        .as_ref()
-        .ok_or("Active player has no position".to_string())?;
 
     game_state.available_actions = vec![];
     if !player.state.up {
@@ -18,23 +15,21 @@ pub fn move_discovery(game_state: &mut GameState) -> Result<(), String> {
             .push(Action::new(ActionType::StandUp, None, None));
     }
 
-    let moves_available = (player.ma + 2).saturating_sub(player.state.moves);
-    if moves_available > 0 {
-        for square in player_position.get_adjacent_squares() {
-            if !(1..(ARENA_WIDTH - 1)).contains(&square.x)
-                || !(1..(ARENA_HEIGHT - 1)).contains(&square.y)
-            {
-                continue;
-            }
+    // Get all reachable squares using pathfinding
+    let reachable = get_reachable_squares(game_state, &player.player_id)?;
 
-            if game_state.get_player_at(&square).is_err() {
-                game_state.available_actions.push(Action::new(
-                    ActionType::Move,
-                    None,
-                    Some(square),
-                ));
-            }
+    for square_info in reachable {
+        let square = square_info.position;
+        // Ensure the square is within the pitch boundaries
+        if !(1..(ARENA_WIDTH - 1)).contains(&square.x)
+            || !(1..(ARENA_HEIGHT - 1)).contains(&square.y)
+        {
+            continue;
         }
+
+        game_state
+            .available_actions
+            .push(Action::new(ActionType::Move, None, Some(square)));
     }
 
     game_state

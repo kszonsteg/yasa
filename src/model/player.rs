@@ -1,4 +1,5 @@
 use super::enums::{PlayerRole, Skill};
+use super::pathfinding::PlayerPath;
 use super::position::Square;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -12,6 +13,9 @@ pub struct PlayerState {
     pub knocked_out: bool,
     pub squares_moved: Vec<Square>,
     pub has_blocked: bool,
+    /// The current path the player is following (if any)
+    #[serde(default)]
+    pub active_path: Option<PlayerPath>,
 }
 
 impl Default for PlayerState {
@@ -24,6 +28,7 @@ impl Default for PlayerState {
             knocked_out: false,
             squares_moved: Vec::new(),
             has_blocked: false,
+            active_path: None,
         }
     }
 }

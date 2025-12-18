@@ -3,6 +3,7 @@ pub mod ball;
 pub mod constants;
 pub mod enums;
 pub mod game;
+pub mod pathfinding;
 pub mod player;
 pub mod position;
 pub mod team;
