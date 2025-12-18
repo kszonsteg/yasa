@@ -5,6 +5,7 @@ use crate::model::team::Team;
 
 // Re-export both implementations
 pub mod candle_impl;
+pub mod heuristic;
 pub mod tract_impl;
 
 // Board dimensions for the neural network
@@ -17,33 +18,10 @@ pub const NUM_NON_SPATIAL_FEATURES: usize = 15;
 /// Trait for value policy implementations
 pub trait ValuePolicyTrait: Send + Sync {
     /// Evaluate a game state and return the probability of scoring for the active team
-    fn evaluate(&self, state: &GameState) -> Result<f32, Box<dyn std::error::Error>>;
+    fn evaluate(&self, state: &GameState) -> Result<f64, String>;
 
     /// Get the name of this implementation for logging
     fn name(&self) -> &'static str;
-}
-
-pub struct GameEvaluator;
-
-impl GameEvaluator {
-    pub fn new() -> Self {
-        GameEvaluator
-    }
-
-    /// Evaluate a game state from the perspective of the current team.
-    /// Returns a score in the range [-1.0, 1.0] where:
-    /// - 1.0 = definitely winning
-    /// - 0.0 = draw
-    /// - -1.0 = definitely losing
-    pub fn evaluate(&self, _state: &GameState) -> Result<f64, String> {
-        Ok(0.0)
-    }
-}
-
-impl Default for GameEvaluator {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 /// Helper functions for creating neural network inputs from game state
@@ -206,7 +184,5 @@ impl InputBuilder {
 
 // Re-export the implementations for convenience
 pub use candle_impl::CandleValuePolicy;
+pub use heuristic::HeuristicValuePolicy;
 pub use tract_impl::TractValuePolicy;
-
-// Backward compatibility alias
-pub type ValuePolicy = TractValuePolicy;

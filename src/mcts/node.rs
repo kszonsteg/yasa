@@ -15,18 +15,43 @@ pub struct ChanceOutcome {
     pub resulting_state: GameState,
 }
 
+/// Represents a node within the Monte Carlo Tree Search (MCTS) structure.
+///
+/// Each `MCTSNode` contains information about the state within the game tree,
+/// as well as metadata required for performing the MCTS algorithm, such as visits,
+/// total score, and connections to parent and child nodes.
+///
+/// # Fields
+/// - `state` (GameState): The game state associated with this node.
+/// - `node_type` (NodeType): The type of node (Decision or Chance), which determines
+///   how the node is treated during the MCTS process.
+/// - `parent` (Option<usize>): The index of the parent node, if any. A value of `None` indicates
+///   that this is the root node.
+/// - `decision_children` (HashMap<Action, usize>): A mapping from actions to the indices of child nodes,
+///   representing the explored moves from this state.
+/// - `untried_actions` (Vec<Action>): A list of actions that have not yet been explored from
+///   this node. Expanding these actions results in new child nodes.
+/// - `chance_children` (Vec<usize>): A list of child indices for chance nodes, used to handle
+///   probabilistic outcomes from random actions, such as dice rolls.
+/// - `chance_probability` (f64): The probability of reaching to this node.
+/// - `visits` (u32): The number of times this node has been visited during simulations. This
+///   value is used to calculate action-selection criteria such as UCT.
+/// - `total_score` (f64): The total reward accumulated through this node across all its visits.
+///   This value is used to compute the average score during the decision-making process.
+/// - `is_terminal` (bool): A flag indicating whether this node represents a terminal state in
+///   the search.
 #[derive(Debug, Clone)]
 pub struct MCTSNode {
     pub state: GameState,
     pub node_type: NodeType,
     pub parent: Option<usize>,
-    pub children: HashMap<Action, usize>,
+    pub decision_children: HashMap<Action, usize>,
+    pub untried_actions: Vec<Action>,
     pub chance_children: Vec<usize>,
+    pub chance_probability: f64,
     pub visits: u32,
     pub total_score: f64,
-    pub untried_actions: Vec<Action>,
     pub is_terminal: bool,
-    pub chance_probability: f64,
 }
 
 impl MCTSNode {
@@ -58,28 +83,32 @@ impl MCTSNode {
             state,
             node_type: NodeType::Chance,
             parent,
-            children: HashMap::new(),
+            decision_children: HashMap::new(),
+            untried_actions: Vec::new(),
             chance_children: Vec::new(),
+            chance_probability: probability,
             visits: 0,
             total_score: 0.0,
-            untried_actions: Vec::new(),
             is_terminal: false,
-            chance_probability: probability,
         }
     }
 
-    pub fn new_decision_node(state: GameState, parent: Option<usize>) -> Result<Self, String> {
+    pub fn new_decision_node(
+        state: GameState,
+        parent: Option<usize>,
+        probability: f64,
+    ) -> Result<Self, String> {
         let mut node = MCTSNode {
             state: state.clone(),
             node_type: NodeType::Decision,
             parent,
-            children: HashMap::new(),
+            decision_children: HashMap::new(),
+            untried_actions: Vec::new(),
+            chance_probability: probability,
             chance_children: Vec::new(),
             visits: 0,
             total_score: 0.0,
-            untried_actions: Vec::new(),
             is_terminal: false,
-            chance_probability: 1.0,
         };
 
         node.untried_actions = state
@@ -93,6 +122,7 @@ impl MCTSNode {
                     ActionType::StartPass,
                     ActionType::StartHandoff,
                     ActionType::StartFoul,
+                    ActionType::StartBlock,
                 ]
                 .contains(&action.action_type())
             })

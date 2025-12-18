@@ -11,9 +11,16 @@ use crate::actions::discovery::setup::{
 };
 use crate::actions::discovery::special::{ejection_discovery, reroll_discovery};
 use crate::actions::discovery::turn::turn_discovery;
+use crate::actions::execution::block::block_execution;
+use crate::actions::execution::movement::{move_execution, stand_up_execution};
+use crate::actions::execution::turn::{
+    end_player_turn_execution, end_turn_execution, start_blitz_execution, start_block_execution,
+    start_foul_execution, start_handoff_execution, start_move_execution, start_pass_execution,
+};
+use crate::actions::rollout::gfi_rollout;
 use crate::actions::rollout::model::RolloutOutcome;
 use crate::model::action::Action;
-use crate::model::enums::Procedure;
+use crate::model::enums::{ActionType, Procedure};
 use crate::model::game::GameState;
 
 /// Registry that composes multiple action handlers
@@ -59,6 +66,8 @@ impl ActionRegistry {
             // Pass
             Some(Procedure::PassAction) => pass_action_discovery(game_state),
             Some(Procedure::Interception) => interception_discovery(game_state),
+            // Terminal
+            Some(Procedure::EndTurn) => Ok(()),
             // Errors
             Some(p) => Err(format!("Procedure not supported {p:?} in action discovery")),
             _ => Err("No procedure found in actions discovery.".to_string()),
@@ -69,18 +78,43 @@ impl ActionRegistry {
     /// Returns an error if the action is not supported.
     pub fn execute_action(
         &self,
-        _game_state: &mut GameState,
-        _action: &Action,
+        game_state: &mut GameState,
+        action: &Action,
     ) -> Result<(), String> {
-        todo!("Implement execute_action")
+        match action.action_type() {
+            // Turn
+            ActionType::StartMove => start_move_execution(game_state, action),
+            ActionType::StartBlock => start_block_execution(game_state, action),
+            ActionType::StartFoul => start_foul_execution(game_state, action),
+            ActionType::StartBlitz => start_blitz_execution(game_state, action),
+            ActionType::StartHandoff => start_handoff_execution(game_state, action),
+            ActionType::StartPass => start_pass_execution(game_state, action),
+            ActionType::EndPlayerTurn => end_player_turn_execution(game_state),
+            ActionType::EndTurn => end_turn_execution(game_state),
+            // Movement
+            ActionType::Move => move_execution(game_state, action),
+            ActionType::StandUp => stand_up_execution(game_state),
+            // Block
+            ActionType::Block => block_execution(game_state, action),
+            _ => Err(format!(
+                "Implement {action:?} action execution on procedure {:?} in action registry",
+                game_state.procedure
+            )),
+        }
     }
 
     /// Returns a list of possible outcomes with probabilities for a game state.
     /// For example, returns the list with possible block rolls outcomes from a block action.
     pub fn rollout_chance_outcomes(
         &self,
-        _game_state: &GameState,
+        game_state: &GameState,
     ) -> Result<Vec<RolloutOutcome>, String> {
-        todo!("Implement rollout_chance_outcomes")
+        match game_state.procedure {
+            Some(Procedure::GFI) => gfi_rollout(game_state),
+            _ => Err(format!(
+                "Implement {:?} procedure rollout.",
+                game_state.procedure
+            )),
+        }
     }
 }

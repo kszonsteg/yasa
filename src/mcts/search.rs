@@ -19,7 +19,7 @@ impl MCTSSearch {
     pub fn new() -> Self {
         MCTSSearch {
             exploration_constant: 1.4, // Standard UCB1 exploration constant
-            time_limit: Duration::from_millis(1000), // 1 second default
+            time_limit: Duration::from_millis(1000), // 1-second default
             iterations: 0,
         }
     }
@@ -33,15 +33,19 @@ impl MCTSSearch {
     }
 
     pub fn search(&mut self, initial_state: GameState) -> Result<Action, String> {
-        let mut tree = MCTSTree::new(initial_state.clone(), self.exploration_constant)?;
+        let mut tree = MCTSTree::new(initial_state, self.exploration_constant)?;
         let start_time = Instant::now();
 
         while start_time.elapsed() < self.time_limit {
             let selected_node = tree.select(tree.root_index);
-            let expanded_node = tree.expand(selected_node)?;
-            let score = tree.evaluate(expanded_node)?;
-            tree.backpropagate(expanded_node, score);
-
+            if tree.nodes[selected_node].is_terminal {
+                let score = tree.evaluate(selected_node)?;
+                tree.backpropagate(selected_node, score);
+            } else {
+                let expanded_node = tree.expand(selected_node)?;
+                let score = tree.evaluate(expanded_node)?;
+                tree.backpropagate(expanded_node, score);
+            }
             self.iterations += 1;
         }
 

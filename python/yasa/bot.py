@@ -35,9 +35,11 @@ class YasaBot(Agent):
 
     def act(self, game: Game) -> Action:
         """Main action method that delegates to the decision strategy."""
-        return self.decision_strategy.choose_action(
+        action = self.decision_strategy.choose_action(
             game, self.time_limit, self.agent_team
         )
+        print(f"{self.name}: {action}")
+        return action
 
     def new_game(self, game: Game, team: Team) -> None:
         """Called when a new game starts."""

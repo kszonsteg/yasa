@@ -86,7 +86,7 @@ impl Default for GameState {
             away_dugout: None,
             available_actions: Vec::new(),
             procedure: None,
-            turn_state: None,
+            turn_state: Some(TurnState::default()),
             coin_toss_winner: None,
             rolls: Vec::new(),
             chain_push: None,
@@ -101,6 +101,22 @@ impl GameState {
     pub fn from_json(state: &str) -> Result<GameState, serde_json::Error> {
         let game_state: GameState = serde_json::from_str(state)?;
         Ok(game_state)
+    }
+
+    pub fn get_current_team(&self) -> Option<&Team> {
+        if let Some(current_team_id) = &self.current_team_id {
+            if let Some(home_team) = &self.home_team {
+                if &home_team.team_id == current_team_id {
+                    return Some(home_team);
+                }
+            }
+            if let Some(away_team) = &self.away_team {
+                if &away_team.team_id == current_team_id {
+                    return Some(away_team);
+                }
+            }
+        }
+        None
     }
 
     pub fn is_ball_carried(&self) -> bool {
@@ -224,6 +240,26 @@ impl GameState {
         Err(format!("No player with id {player_id:?}"))
     }
 
+    pub fn get_player_mut(&mut self, player_id: &String) -> Result<&mut Player, String> {
+        if let Some(home_team) = &mut self.home_team {
+            for player in home_team.players_by_id.values_mut() {
+                if player.player_id == *player_id {
+                    return Ok(player);
+                }
+            }
+        }
+
+        if let Some(away_team) = &mut self.away_team {
+            for player in away_team.players_by_id.values_mut() {
+                if player.player_id == *player_id {
+                    return Ok(player);
+                }
+            }
+        }
+
+        Err(format!("No player with id {player_id:?}"))
+    }
+
     pub fn get_player_at(&self, position: &Square) -> Result<&Player, String> {
         if let Some(home_team) = &self.home_team {
             for player in home_team.players_by_id.values() {
@@ -255,6 +291,47 @@ impl GameState {
             .ok_or("Missing active player.".to_string())?;
 
         self.get_player(active_player_id)
+    }
+
+    pub fn get_active_player_mut(&mut self) -> Result<&mut Player, String> {
+        let active_player_id = self
+            .active_player_id
+            .as_ref()
+            .ok_or("Missing active player.".to_string())?
+            .clone();
+
+        self.get_player_mut(&active_player_id)
+    }
+
+    pub fn get_ball_carrier(&self) -> Result<&Player, String> {
+        let ball_position = self.get_ball_position()?;
+        self.get_player_at(&ball_position)
+    }
+
+    pub fn get_players_on_pitch(&self, team_id: &str, up_only: bool) -> Vec<&Player> {
+        let mut players = Vec::new();
+
+        let team = if self
+            .home_team
+            .as_ref()
+            .map(|team| team.team_id == *team_id)
+            .unwrap_or(false)
+        {
+            &self.home_team
+        } else {
+            &self.away_team
+        };
+
+        if let Some(team) = team {
+            for player in team.players_by_id.values() {
+                // Player must have a position (be on pitch) and optionally be standing
+                if player.position.is_some() && (!up_only || player.state.up) {
+                    players.push(player);
+                }
+            }
+        }
+
+        players
     }
 
     pub fn get_player_team_id(&self, player_id: &String) -> Result<&String, String> {

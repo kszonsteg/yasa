@@ -65,6 +65,8 @@ pub enum Procedure {
     Turn,
     Turnover,
     WeatherTable,
+    // Used in MCTS for random rollout
+    BlockRoll,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Hash)]

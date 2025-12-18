@@ -111,8 +111,8 @@ impl CandleValuePolicy {
     pub const DEFAULT_MODEL_PATH: &'static str = "exports/blood_bowl_value_net.safetensors";
 
     /// Create a new CandleValuePolicy with the default model path on CPU
-    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        Self::from_path(Self::DEFAULT_MODEL_PATH, &Device::Cpu)
+    pub fn new() -> Result<Self, String> {
+        Self::from_path(Self::DEFAULT_MODEL_PATH, &Device::Cpu).map_err(|e| e.to_string())
     }
 
     /// Create a new CandleValuePolicy from a specific SafeTensors model path
@@ -173,14 +173,16 @@ impl CandleValuePolicy {
 }
 
 impl ValuePolicyTrait for CandleValuePolicy {
-    fn evaluate(&self, state: &GameState) -> Result<f32, Box<dyn std::error::Error>> {
+    fn evaluate(&self, state: &GameState) -> Result<f64, String> {
         let spatial_data = InputBuilder::create_spatial_input(state);
         let non_spatial_data = InputBuilder::create_non_spatial_input(state);
 
-        let value = self.infer(&spatial_data, &non_spatial_data)?;
+        let value = self
+            .infer(&spatial_data, &non_spatial_data)
+            .map_err(|e| e.to_string())?;
 
-        // Convert to perspective of current team
-        Ok(InputBuilder::get_value_for_active_team(state, value))
+        // Convert to perspective of the current team
+        Ok(InputBuilder::get_value_for_active_team(state, value) as f64)
     }
 
     fn name(&self) -> &'static str {

@@ -1,3 +1,4 @@
+import json
 from typing import cast
 
 import botbowl
@@ -18,8 +19,8 @@ away = botbowl.load_team_by_filename("human", ruleset)
 config.competition_mode = False
 config.debug_mode = False
 
-away_agent = cast(YasaRandom, botbowl.make_bot("yasa_mcts"))
-home_agent = cast(YasaRandom, botbowl.make_bot("yasa_mcts"))
+away_agent = cast(YasaMCTS, botbowl.make_bot("yasa_mcts"))
+home_agent = cast(YasaRandom, botbowl.make_bot("yasa_random"))
 
 game = botbowl.Game(
     "1",
@@ -38,6 +39,8 @@ try:
     game.init()
 except Exception as e:
     print(f"Game failed with error: {e}")
+    with open("error.json", "w") as f:
+        json.dump(game.to_json(), f, indent=4)
     raise
 
 print("Game is over")
