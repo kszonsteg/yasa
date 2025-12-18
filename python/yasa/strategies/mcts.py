@@ -1,6 +1,5 @@
 import json
 import math
-import random
 
 from botbowl import (
     Action,
@@ -74,11 +73,6 @@ class MCTSDecisionStrategy(DecisionStrategy):
             with open("error.json", "w") as f:
                 json.dump(self.serializer.to_json(game.state), f, indent=4)
             raise
-
-    @staticmethod
-    def __choose_random_action(game: Game) -> Action:
-        """Choose a random action."""
-        return random.choice(game.state.available_actions)
 
     def __choose_scripted_action(
         self, game: Game, proc: procedure.Procedure, agent_team: Team
