@@ -88,10 +88,14 @@ fn test_mcts_gfi() {
     let mut state = game_state_setup(15, 5, 10, 10, 15, 6);
     state.procedure = Some(Procedure::MoveAction);
     state.active_player_id = HOME_PLAYER_ID.to_string().into();
-    let active_player = state
-        .get_active_player_mut()
-        .expect("Failed to get active player.");
-    active_player.state.moves = active_player.ma;
+
+    let expected_moves_after_gfi = {
+        let active_player = state
+            .get_active_player_mut()
+            .expect("Failed to get active player.");
+        active_player.state.moves = active_player.ma;
+        active_player.ma + 1
+    };
 
     let mut tree = MCTSTree::new(state, 1.4).expect("Failed to create MCTS tree.");
 
@@ -123,7 +127,69 @@ fn test_mcts_gfi() {
         2,
         "Chance node expansion failed."
     );
-    println!("{:?}", tree.generate_mermaid_graph(0));
+
+    // Validate GFI outcomes
+    let chance_children = &tree.nodes[expanded_node_idx].chance_children;
+
+    // Find success and failure outcomes by checking procedure
+    let mut success_node = None;
+    let mut failure_node = None;
+
+    for &child_idx in chance_children {
+        let child = &tree.nodes[child_idx];
+        if child.state.procedure == Some(Procedure::Turnover) {
+            failure_node = Some(child);
+        } else {
+            success_node = Some(child);
+        }
+    }
+
+    let success = success_node.expect("Success outcome not found");
+    let failure = failure_node.expect("Failure outcome not found");
+
+    // Validate success outcome (5/6 probability)
+    assert_eq!(
+        success.chance_probability,
+        5.0 / 6.0,
+        "Success outcome probability incorrect"
+    );
+    assert_eq!(
+        success.state.procedure,
+        Some(Procedure::MoveAction),
+        "Success outcome should restore parent procedure (MoveAction)"
+    );
+    let success_player = success
+        .state
+        .get_active_player()
+        .expect("No active player in success outcome");
+    assert_eq!(
+        success_player.state.moves, expected_moves_after_gfi,
+        "Success outcome should increment moves"
+    );
+    assert!(
+        success_player.state.up,
+        "Player should still be standing after successful GFI"
+    );
+
+    // Validate failure outcome (1/6 probability)
+    assert_eq!(
+        failure.chance_probability,
+        1.0 / 6.0,
+        "Failure outcome probability incorrect"
+    );
+    assert_eq!(
+        failure.state.procedure,
+        Some(Procedure::Turnover),
+        "Failure outcome should set procedure to Turnover"
+    );
+    let failure_player = failure
+        .state
+        .get_active_player()
+        .expect("No active player in failure outcome");
+    assert!(
+        !failure_player.state.up,
+        "Player should be knocked down after failed GFI"
+    );
 }
 
 #[test]
@@ -177,9 +243,6 @@ fn test_touchdown() {
     let touchdown_score = evaluator
         .evaluate(&state)
         .expect("Failed to evaluate state.");
-    println!("First score: {first_score}");
-    println!("Ball pickup score: {ball_picked_score}");
-    println!("Touchdown score: {touchdown_score}");
     assert!(
         touchdown_score > ball_picked_score,
         "Touchdown not scoring."

@@ -12,10 +12,20 @@ pub fn move_execution(game_state: &mut GameState, action: &Action) -> Result<(),
 
     let gfi_required = {
         let active_player = game_state.get_active_player()?;
-        active_player.state.moves + 1 > active_player.get_ma()
+        let moves = active_player.state.moves;
+        let ma = active_player.get_ma();
+
+        moves.checked_add(1).ok_or_else(|| {
+            format!(
+                "Move counter overflow: player has {} moves (should never exceed ma+2={})!",
+                moves,
+                ma + 2
+            )
+        })? > ma
     };
 
     if gfi_required {
+        game_state.parent_procedure = game_state.procedure;
         game_state.procedure = Some(Procedure::GFI);
         game_state.position = Some(vec![position.x, position.y]);
         return Ok(());
@@ -41,9 +51,16 @@ pub fn move_execution(game_state: &mut GameState, action: &Action) -> Result<(),
     // }
 
     let was_carrying = game_state.is_active_player_carrying_ball();
+    let proc = game_state.procedure;
 
     let active_player = game_state.get_active_player_mut()?;
-    active_player.state.moves += 1;
+    let old_moves = active_player.state.moves;
+    active_player.state.moves = active_player.state.moves.checked_add(1).ok_or_else(|| {
+        format!(
+            "Move counter overflow when incrementing: player has {} moves! Procedure: {:?}",
+            old_moves, proc
+        )
+    })?;
     active_player.position = Some(position);
 
     if let Ok(ball_position) = game_state.get_ball_position() {

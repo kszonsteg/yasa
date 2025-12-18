@@ -13,6 +13,6 @@ class DecisionStrategy(ABC):
         self.parser = ActionParser()
 
     @abstractmethod
-    def choose_action(self, game: Game, time_limit: int, agent_team: Team) -> Action:
+    def choose_action(self, game: Game, agent_team: Team) -> Action:
         """Choose an action from the available actions."""
         pass

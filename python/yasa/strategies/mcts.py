@@ -34,14 +34,15 @@ TURN_PROCEDURES = (
 class MCTSDecisionStrategy(DecisionStrategy):
     """MCTS decision strategy."""
 
-    def __init__(self):
+    def __init__(self, time_limit: int = 1000, terminal: bool = False):
         super().__init__()
         self.__action_queue: list[Action] = []
+        self.terminal = terminal
+        self.time_limit = time_limit
 
     def choose_action(
         self,
         game: Game,
-        time_limit: int,
         agent_team: Team,
     ) -> Action:
         """Choose an action using the MCTS algorithm for turns and scripted for others."""
@@ -57,9 +58,13 @@ class MCTSDecisionStrategy(DecisionStrategy):
                 self.serializer.to_json(game.state),
             )
             return self.parser.parse_action(
-                json.loads(get_mcts_action(state=json_state, time_limit=1000))[
-                    "action"
-                ],
+                json.loads(
+                    get_mcts_action(
+                        state=json_state,
+                        time_limit=self.time_limit,
+                        terminal=self.terminal,
+                    )
+                )["action"],
                 game.state,
             )
         except Exception:
@@ -93,6 +98,8 @@ class MCTSDecisionStrategy(DecisionStrategy):
             return self.__touchback(game, agent_team)
         elif isinstance(proc, procedure.Reroll):
             return Action(ActionType.USE_REROLL)
+        elif isinstance(proc, procedure.Interception):
+            return self.__interception(game, agent_team)
         else:
             raise ValueError(f"Unsupported procedure: {proc}")
 
@@ -147,6 +154,25 @@ class MCTSDecisionStrategy(DecisionStrategy):
                 return Action(ActionType.SELECT_PLAYER, player=player)
             p = player
         return Action(ActionType.SELECT_PLAYER, player=p)
+
+    @staticmethod
+    def __interception(game: Game, agent_team: Team) -> Action:
+        ball_pos = game.get_ball_position()
+        best_dist = float("inf")
+        best_action = Action(ActionType.SELECT_NONE)
+        for avail in game.state.available_actions:
+            if avail.action_type == ActionType.SELECT_PLAYER:
+                for player in avail.players:
+                    if player.team == agent_team:
+                        dist = player.position.distance(ball_pos)
+                        if dist < best_dist:
+                            best_dist = dist
+                            best_action = Action(
+                                ActionType.SELECT_PLAYER,
+                                player=player,
+                                position=ball_pos,
+                            )
+        return best_action
 
     @staticmethod
     def __is_selecting_block(proc: procedure.Procedure, agent_team: Team) -> bool:

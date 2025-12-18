@@ -22,7 +22,6 @@ class RandomDecisionStrategy(DecisionStrategy):
     def choose_action(
         self,
         game: Game,
-        time_limit: int,
         agent_team: Team,
     ) -> Action:
         """Choose a random action from available actions."""

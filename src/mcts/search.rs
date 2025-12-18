@@ -48,7 +48,39 @@ impl MCTSSearch {
             }
             self.iterations += 1;
         }
+        tree.get_best_action()
+    }
 
+    pub fn search_terminal(&mut self, initial_state: GameState) -> Result<Action, String> {
+        let mut tree = MCTSTree::new(initial_state, self.exploration_constant)?;
+        let start_time = Instant::now();
+
+        while start_time.elapsed() < self.time_limit {
+            let selected_node = tree.select(tree.root_index);
+            if tree.nodes[selected_node].is_terminal {
+                let score = tree.evaluate(selected_node)?;
+                tree.backpropagate(selected_node, score);
+            } else {
+                let mut current_index = selected_node;
+
+                loop {
+                    if tree.nodes[current_index].is_terminal {
+                        let score = tree.evaluate(current_index)?;
+                        tree.backpropagate(current_index, score);
+                        break;
+                    }
+
+                    if !tree.nodes[current_index].is_fully_expanded() {
+                        let child_index = tree.expand(current_index)?;
+                        current_index = child_index;
+                        continue;
+                    }
+
+                    current_index = tree.select(current_index);
+                }
+            }
+            self.iterations += 1;
+        }
         tree.get_best_action()
     }
 }

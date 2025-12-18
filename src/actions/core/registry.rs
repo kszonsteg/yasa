@@ -66,8 +66,10 @@ impl ActionRegistry {
             // Pass
             Some(Procedure::PassAction) => pass_action_discovery(game_state),
             Some(Procedure::Interception) => interception_discovery(game_state),
-            // Terminal
+            // Terminal - no actions to discover
             Some(Procedure::EndTurn) => Ok(()),
+            Some(Procedure::Turnover) => Ok(()),
+            Some(Procedure::Touchdown) => Ok(()),
             // Errors
             Some(p) => Err(format!("Procedure not supported {p:?} in action discovery")),
             _ => Err("No procedure found in actions discovery.".to_string()),

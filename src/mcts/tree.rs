@@ -199,15 +199,19 @@ impl MCTSTree {
         let mut first_child_index = None;
 
         for outcome in outcomes {
-            let child_node = if self.is_random_procedure(&outcome.resulting_state.procedure)? {
+            let mut resulting_state = outcome.resulting_state;
+            let child_node: MCTSNode = if self.is_random_procedure(&resulting_state.procedure)? {
                 MCTSNode::new_chance_node(
-                    outcome.resulting_state,
+                    resulting_state,
                     Some(chance_node_index),
                     outcome.probability,
                 )
             } else {
+                // Discover available actions for the resulting state before creating decision node
+                self.action_registry
+                    .discover_actions(&mut resulting_state)?;
                 MCTSNode::new_decision_node(
-                    outcome.resulting_state,
+                    resulting_state,
                     Some(chance_node_index),
                     outcome.probability,
                 )?

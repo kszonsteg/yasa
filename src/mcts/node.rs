@@ -62,13 +62,18 @@ impl MCTSNode {
 
     pub fn get_ucb1_value(&self, exploration_constant: f64, parent_visits: u32) -> f64 {
         if self.visits == 0 {
-            f64::INFINITY
-        } else {
-            let exploitation = self.total_score / self.visits as f64;
-            let exploration =
-                exploration_constant * ((parent_visits as f64).ln() / self.visits as f64).sqrt();
-            exploitation + exploration
+            return f64::INFINITY;
         }
+
+        let parent_visits_f = parent_visits as f64;
+        let exploration_term = if parent_visits == 0 {
+            exploration_constant * (1.0f64 / (self.visits as f64)).sqrt()
+        } else {
+            exploration_constant * ((parent_visits_f.ln() / self.visits as f64).sqrt())
+        };
+
+        let exploitation = self.total_score / self.visits as f64;
+        exploitation + exploration_term
     }
 
     pub fn is_fully_expanded(&self) -> bool {

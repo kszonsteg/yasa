@@ -55,6 +55,8 @@ pub struct GameState {
     // procedure
     #[serde(default)]
     pub procedure: Option<Procedure>,
+    #[serde(default)]
+    pub parent_procedure: Option<Procedure>,
     pub current_team_id: Option<String>,
     pub active_player_id: Option<String>,
     pub rolls: Vec<ActionType>,
@@ -86,6 +88,7 @@ impl Default for GameState {
             away_dugout: None,
             available_actions: Vec::new(),
             procedure: None,
+            parent_procedure: None,
             turn_state: Some(TurnState::default()),
             coin_toss_winner: None,
             rolls: Vec::new(),
