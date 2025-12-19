@@ -68,7 +68,7 @@ def export_to_onnx(
         dynamic_axes = {
             "spatial_input": {0: "batch_size"},
             "non_spatial_input": {0: "batch_size"},
-            "output": {0: "batch_size"},
+            "output": {0: "batch_size", 1: "num_outputs"},  # (N, 2) for dual outputs
         }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -19,7 +19,9 @@ use super::{
 /// - 1x1 conv to reduce channels (27 -> 16)
 /// - 3x3 conv for spatial patterns (16 -> 32)
 /// - Global average pooling (32, W, H) -> (32,)
-/// - FC head (32 + 15 -> 64 -> 1) with tanh output
+/// - FC head (32 + 15 -> 64 -> 2) with tanh output
+/// - Output[0] = home team perspective
+/// - Output[1] = away team perspective
 pub struct ValueNetwork {
     // Spatial reduction: 1x1 conv
     spatial_reduce_conv: Conv2d,
@@ -59,10 +61,10 @@ impl ValueNetwork {
         // Spatial conv: 16 -> 32 channels
         let spatial_conv = conv2d(16, 32, 3, conv3x3_config, vb.pp("spatial_conv.0"))?;
 
-        // FC head: 32 + 15 = 47 -> 64 -> 1
+        // FC head: 32 + 15 = 47 -> 64 -> 2
         let fc_input_size = 32 + NUM_NON_SPATIAL_FEATURES;
         let fc1 = linear(fc_input_size, 64, vb.pp("fc_head.0"))?;
-        let fc2 = linear(64, 1, vb.pp("fc_head.2"))?;
+        let fc2 = linear(64, 2, vb.pp("fc_head.2"))?;
 
         Ok(Self {
             spatial_reduce_conv,
@@ -143,14 +145,14 @@ impl CandleValuePolicy {
     }
 
     /// Run inference with raw spatial and non-spatial inputs
-    /// Returns a single value in [-1, 1] where:
-    /// - Positive values indicate home team is likely to score
-    /// - Negative values indicate away team is likely to score
+    /// Returns two values in [-1, 1] where:
+    /// - [0] = value from home team perspective (positive = good for home)
+    /// - [1] = value from away team perspective (positive = good for away)
     pub fn infer(
         &self,
         spatial_data: &[f32],
         non_spatial_data: &[f32],
-    ) -> Result<f32, Box<dyn std::error::Error>> {
+    ) -> Result<(f32, f32), Box<dyn std::error::Error>> {
         // Shape: (batch, channels, width, height) = (1, 27, 28, 17)
         let spatial = Tensor::from_slice(
             spatial_data,
@@ -167,8 +169,10 @@ impl CandleValuePolicy {
         let output = self.model.forward(&spatial, &non_spatial)?;
         let output_vec: Vec<f32> = output.flatten_all()?.to_vec1()?;
 
-        // Model outputs single value in [-1, 1]
-        Ok(output_vec[0])
+        // Model outputs 2 values in [-1, 1]
+        // [0] = home team perspective (positive = good for home)
+        // [1] = away team perspective (positive = good for away)
+        Ok((output_vec[0], output_vec[1]))
     }
 }
 
@@ -177,12 +181,13 @@ impl ValuePolicyTrait for CandleValuePolicy {
         let spatial_data = InputBuilder::create_spatial_input(state);
         let non_spatial_data = InputBuilder::create_non_spatial_input(state);
 
-        let value = self
+        let (home_value, away_value) = self
             .infer(&spatial_data, &non_spatial_data)
             .map_err(|e| e.to_string())?;
 
-        // Convert to perspective of the current team
-        Ok(InputBuilder::get_value_for_active_team(state, value) as f64)
+        // Select the appropriate value based on the active team
+        let value = InputBuilder::get_dual_value_for_active_team(state, home_value, away_value);
+        Ok(value as f64)
     }
 
     fn name(&self) -> &'static str {

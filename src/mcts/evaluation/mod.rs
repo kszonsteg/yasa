@@ -139,7 +139,11 @@ impl InputBuilder {
     }
 
     /// Determine which probability to return based on the active team
-    /// Deprecated: Use get_value_for_active_team for single-output model
+    /// Deprecated: Use get_dual_value_for_active_team for dual-output model
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use get_dual_value_for_active_team for dual-output model"
+    )]
     pub fn get_active_team_probability(state: &GameState, home_prob: f32, away_prob: f32) -> f32 {
         match &state.current_team_id {
             Some(active_id)
@@ -158,9 +162,41 @@ impl InputBuilder {
         }
     }
 
+    /// Select the appropriate value from dual outputs based on the active team
+    /// Model outputs: [home_value, away_value] where each is in [-1, 1]
+    /// Returns: the value from the perspective of the active team (positive = good)
+    pub fn get_dual_value_for_active_team(
+        state: &GameState,
+        home_value: f32,
+        away_value: f32,
+    ) -> f32 {
+        match &state.current_team_id {
+            Some(active_id)
+                if Some(active_id.clone())
+                    == state.home_team.as_ref().map(|t| t.team_id.clone()) =>
+            {
+                // Home team is active, use home value
+                home_value
+            }
+            Some(active_id)
+                if Some(active_id.clone())
+                    == state.away_team.as_ref().map(|t| t.team_id.clone()) =>
+            {
+                // Away team is active, use away value
+                away_value
+            }
+            _ => 0.0,
+        }
+    }
+
     /// Convert model value (from home team perspective) to active team perspective
+    /// Deprecated: Use get_dual_value_for_active_team for dual-output model
     /// Model output: +1 = home team likely to score, -1 = away team likely to score
     /// Returns: positive = good for active team, negative = bad for active team
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use get_dual_value_for_active_team for dual-output model"
+    )]
     pub fn get_value_for_active_team(state: &GameState, value: f32) -> f32 {
         match &state.current_team_id {
             Some(active_id)

@@ -23,7 +23,9 @@ class ValueNetworkModule(pl.LightningModule):
     Architecture:
         - Flattened spatial input concatenated with non-spatial features
         - 2 fully connected layers (256 -> 64) with ReLU and Dropout
-        - Output layer with tanh activation for outputs in [-1, 1]
+        - Output layer with tanh activation producing 2 outputs in [-1, 1]
+        - Output[0] = value from home team perspective
+        - Output[1] = value from away team perspective
 
     Attributes:
         BOARD_HEIGHT: Height of the Blood Bowl board (17).
@@ -109,12 +111,12 @@ class ValueNetworkModule(pl.LightningModule):
         # Global average pooling reduces (32, W, H) -> (32,)
         self.global_pool = nn.AdaptiveAvgPool2d(1)
 
-        # FC head: spatial features (32) + non-spatial (15) -> output
+        # FC head: spatial features (32) + non-spatial (15) -> 2 outputs (home, away)
         fc_input_size = 32 + self.num_non_spatial_features
         self.fc_head = nn.Sequential(
             nn.Linear(fc_input_size, 64),
             nn.ReLU(inplace=True),
-            nn.Linear(64, 1),
+            nn.Linear(64, 2),  # 2 outputs: [home_value, away_value]
         )
 
     def forward(
@@ -130,7 +132,9 @@ class ValueNetworkModule(pl.LightningModule):
                               F = num_non_spatial_features.
 
         Returns:
-            Tensor of shape (N, 1) with a single value score in [-1, 1].
+            Tensor of shape (N, 2) with value scores in [-1, 1].
+            Output[:, 0] = home team perspective
+            Output[:, 1] = away team perspective
         """
         # Process spatial features
         x = self.spatial_reduce(spatial_input)  # (N, 16, W, H)
@@ -152,12 +156,18 @@ class ValueNetworkModule(pl.LightningModule):
         """Compute all metrics for logging."""
         loss = self.criterion(outputs, labels)
 
-        # Mean absolute error (scalar output)
+        # Mean absolute error across both outputs
         mae = torch.mean(torch.abs(outputs - labels))
+
+        # Separate MAE for home and away predictions
+        mae_home = torch.mean(torch.abs(outputs[:, 0] - labels[:, 0]))
+        mae_away = torch.mean(torch.abs(outputs[:, 1] - labels[:, 1]))
 
         return {
             "loss": loss,
             "mae": mae,
+            "mae_home": mae_home,
+            "mae_away": mae_away,
         }
 
     def _log_metrics(self, metrics: dict[str, torch.Tensor], stage: str) -> None:
@@ -270,6 +280,8 @@ class ValueNetworkModule(pl.LightningModule):
             non_spatial_input: Non-spatial features tensor.
 
         Returns:
-            Tensor of shape (N, 1) with value in [-1, 1].
+            Tensor of shape (N, 2) with values in [-1, 1].
+            Output[:, 0] = home team perspective
+            Output[:, 1] = away team perspective
         """
         return self(spatial_input, non_spatial_input)
