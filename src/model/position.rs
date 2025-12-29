@@ -31,20 +31,33 @@ impl Square {
         self.x <= 0 || self.x >= ARENA_WIDTH - 1 || self.y <= 0 || self.y >= ARENA_HEIGHT - 1
     }
 
-    pub fn get_adjacent_squares(&self) -> Vec<Square> {
+    pub fn get_adjacent_squares(&self, is_home: bool) -> Vec<Square> {
         let mut adjacent_squares = Vec::new();
 
         // Get adjacent squares (8 directions)
-        let directions = [
-            (-1, -1),
-            (-1, 0),
-            (-1, 1),
-            (0, -1),
-            (0, 1),
-            (1, -1),
-            (1, 0),
-            (1, 1),
-        ];
+        let directions = if is_home {
+            [
+                (-1, -1),
+                (-1, 0),
+                (-1, 1),
+                (0, -1),
+                (0, 1),
+                (1, -1),
+                (1, 0),
+                (1, 1),
+            ]
+        } else {
+            [
+                (1, -1),
+                (1, 0),
+                (1, 1),
+                (0, -1),
+                (0, 1),
+                (-1, -1),
+                (-1, 0),
+                (-1, 1),
+            ]
+        };
 
         for (dx, dy) in directions {
             let new_x = self.x + dx;

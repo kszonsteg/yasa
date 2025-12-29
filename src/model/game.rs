@@ -154,6 +154,13 @@ impl GameState {
         }
     }
 
+    pub fn is_current_team_home(&self) -> bool {
+        self.current_team_id
+            .as_ref()
+            .map(|id| self.is_home_team(id))
+            .unwrap_or(false)
+    }
+
     pub fn is_team_side(&self, position: &Square, team_id: &String) -> bool {
         if self.is_home_team(team_id) {
             position.x >= ARENA_WIDTH / 2

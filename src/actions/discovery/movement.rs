@@ -20,7 +20,7 @@ pub fn move_discovery(game_state: &mut GameState) -> Result<(), String> {
 
     let moves_available = (player.ma + 2).saturating_sub(player.state.moves);
     if moves_available > 0 {
-        for square in player_position.get_adjacent_squares() {
+        for square in player_position.get_adjacent_squares(game_state.is_current_team_home()) {
             if !(1..(ARENA_WIDTH - 1)).contains(&square.x)
                 || !(1..(ARENA_HEIGHT - 1)).contains(&square.y)
             {

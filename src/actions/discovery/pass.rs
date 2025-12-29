@@ -89,7 +89,7 @@ fn find_interceptors(
     let mut candidate_squares = HashSet::new();
 
     for square in &line_squares {
-        let neighbors = square.get_adjacent_squares();
+        let neighbors = square.get_adjacent_squares(false);
         for neighbor in neighbors {
             if
             // Remove squares where distance to passer_position or target_position is larger than max_distance

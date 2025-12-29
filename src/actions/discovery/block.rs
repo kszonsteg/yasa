@@ -74,7 +74,7 @@ pub fn push_discovery(game_state: &mut GameState) -> Result<(), String> {
         .ok_or("No defender postion in push discovery")?;
 
     // Get all adjacent squares (including out of bounds)
-    let adjacent_squares = defender_position.get_adjacent_squares();
+    let adjacent_squares = defender_position.get_adjacent_squares(false);
     let mut squares_empty = Vec::new();
     let mut squares_out = Vec::new();
     let mut all_valid_squares = Vec::new();
