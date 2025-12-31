@@ -1,5 +1,6 @@
 import json
 from argparse import ArgumentParser
+from pprint import pprint
 from typing import cast
 
 import botbowl
@@ -55,6 +56,8 @@ def run_game(
         game.init()
     except Exception as e:
         print(f"Game failed with error: {e}")
+        print("Procedure Stack:")
+        pprint([item.__class__.__name__ for item in game.state.stack.items])
         with open("error.json", "w") as f:
             json.dump(game.to_json(), f, indent=4)
         raise

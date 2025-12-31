@@ -196,6 +196,7 @@ fn test_mcts_gfi() {
 fn test_touchdown() {
     let mut state = game_state_setup(3, 5, 10, 10, 2, 5);
     state.procedure = Some(Procedure::MoveAction);
+    state.parent_procedure = Some(Procedure::MoveAction);
     state.active_player_id = HOME_PLAYER_ID.to_string().into();
 
     let registry = ActionRegistry::new();

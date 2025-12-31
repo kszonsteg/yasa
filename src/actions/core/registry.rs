@@ -17,8 +17,8 @@ use crate::actions::execution::turn::{
     end_player_turn_execution, end_turn_execution, start_blitz_execution, start_block_execution,
     start_foul_execution, start_handoff_execution, start_move_execution, start_pass_execution,
 };
-use crate::actions::rollout::gfi_rollout;
 use crate::actions::rollout::model::RolloutOutcome;
+use crate::actions::rollout::{dodge_rollout, gfi_rollout};
 use crate::model::action::Action;
 use crate::model::enums::{ActionType, Procedure};
 use crate::model::game::GameState;
@@ -113,6 +113,7 @@ impl ActionRegistry {
     ) -> Result<Vec<RolloutOutcome>, String> {
         match game_state.procedure {
             Some(Procedure::GFI) => gfi_rollout(game_state),
+            Some(Procedure::Dodge) => dodge_rollout(game_state),
             _ => Err(format!(
                 "Implement {:?} procedure rollout.",
                 game_state.procedure

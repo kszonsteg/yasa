@@ -1,5 +1,5 @@
+use crate::actions::common::execute_player_movement;
 use crate::model::action::Action;
-use crate::model::constants::ARENA_WIDTH;
 use crate::model::enums::Procedure;
 use crate::model::game::GameState;
 
@@ -31,66 +31,13 @@ pub fn move_execution(game_state: &mut GameState, action: &Action) -> Result<(),
         return Ok(());
     }
 
-    // TODO: Implement those procedures
-    //
-    // if game_state.get_team_tackle_zones_at(&current_team_id, &position) > 0 {
-    //     game_state.procedure = Some(Procedure::Dodge);
-    //     game_state.position = Some(vec![position.x, position.y]);
-    //     return Ok(());
-    // }
-    //
-    // let requires_pickup = if let Ok(ball_position) = game_state.get_ball_position() {
-    //     ball_position == position && !game_state.is_ball_carried()
-    // } else {
-    //     false
-    // };
-    //
-    // if requires_pickup {
-    //     game_state.procedure = Some(Procedure::Pickup);
-    //     return Ok(());
-    // }
-
-    let was_carrying = game_state.is_active_player_carrying_ball();
-    let proc = game_state.procedure;
-
-    let active_player = game_state.get_active_player_mut()?;
-    let old_moves = active_player.state.moves;
-    active_player.state.moves = active_player.state.moves.checked_add(1).ok_or_else(|| {
-        format!(
-            "Move counter overflow when incrementing: player has {} moves! Procedure: {:?}",
-            old_moves, proc
-        )
-    })?;
-    active_player.position = Some(position);
-
-    if let Ok(ball_position) = game_state.get_ball_position() {
-        if ball_position == position {
-            game_state.balls[0].is_carried = true;
-        }
+    if game_state.get_team_tackle_zones_at(&current_team_id, &position) > 0 {
+        game_state.procedure = Some(Procedure::Dodge);
+        game_state.position = Some(vec![position.x, position.y]);
+        return Ok(());
     }
 
-    if was_carrying || game_state.is_active_player_carrying_ball() {
-        game_state.balls[0].position = Some(position);
-
-        let is_home = game_state.is_home_team(&current_team_id);
-        let is_touchdown = if is_home {
-            position.x == 1
-        } else {
-            position.x == ARENA_WIDTH - 1
-        };
-
-        if is_touchdown {
-            game_state.procedure = Some(Procedure::Touchdown);
-
-            let team = if is_home {
-                game_state.home_team.as_mut()
-            } else {
-                game_state.away_team.as_mut()
-            };
-
-            team.ok_or("Missing team for touchdown")?.score += 1;
-        }
-    }
+    execute_player_movement(game_state, position)?;
 
     Ok(())
 }

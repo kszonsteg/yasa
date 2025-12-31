@@ -161,6 +161,9 @@ class GameStateSerializer:
 
         result = {
             "procedure": proc_name,
+            "parent_procedure": proc_name
+            if proc_name and proc_name.endswith("Action")
+            else None,
             "current_team_id": game_state.current_team.team_id
             if game_state.current_team is not None
             else None,

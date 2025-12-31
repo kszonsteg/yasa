@@ -292,7 +292,7 @@ impl MCTSTree {
 
     fn is_random_procedure(&self, procedure: &Option<Procedure>) -> Result<bool, String> {
         match procedure {
-            Some(Procedure::BlockRoll) | Some(Procedure::GFI) => Ok(true),
+            Some(Procedure::BlockRoll) | Some(Procedure::GFI) | Some(Procedure::Dodge) => Ok(true),
             None => Err("Missing procedure in MCTS expansion".to_string()),
             _ => Ok(false),
         }
