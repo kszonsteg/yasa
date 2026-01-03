@@ -32,6 +32,7 @@ fn game_state_setup(
             y: home_y,
         }),
         ma: 4,
+        ag: 3,
         ..Default::default()
     };
 
@@ -131,7 +132,6 @@ fn test_mcts_gfi() {
     // Validate GFI outcomes
     let chance_children = &tree.nodes[expanded_node_idx].chance_children;
 
-    // Find success and failure outcomes by checking procedure
     let mut success_node = None;
     let mut failure_node = None;
 
@@ -147,7 +147,6 @@ fn test_mcts_gfi() {
     let success = success_node.expect("Success outcome not found");
     let failure = failure_node.expect("Failure outcome not found");
 
-    // Validate success outcome (5/6 probability)
     assert_eq!(
         success.chance_probability,
         5.0 / 6.0,
@@ -171,7 +170,6 @@ fn test_mcts_gfi() {
         "Player should still be standing after successful GFI"
     );
 
-    // Validate failure outcome (1/6 probability)
     assert_eq!(
         failure.chance_probability,
         1.0 / 6.0,
@@ -189,6 +187,120 @@ fn test_mcts_gfi() {
     assert!(
         !failure_player.state.up,
         "Player should be knocked down after failed GFI"
+    );
+}
+
+#[test]
+fn test_mcts_dodge() {
+    let mut state = game_state_setup(15, 5, 15, 4, 15, 6);
+    state.procedure = Some(Procedure::MoveAction);
+    state.parent_procedure = Some(Procedure::MoveAction);
+    state.active_player_id = HOME_PLAYER_ID.to_string().into();
+
+    let mut tree = MCTSTree::new(state, 1.4).expect("Failed to create MCTS tree.");
+
+    assert!(
+        tree.nodes[tree.root_index].state.available_actions.len() > 0,
+        "No actions available."
+    );
+    let selected_node = tree.select(tree.root_index);
+    let expanded_node_idx = tree.expand(selected_node).expect("Failed to expand node.");
+    assert!(tree.nodes.len() > 1, "No child nodes created.");
+
+    {
+        let expanded_node = &tree.nodes[expanded_node_idx];
+        assert_eq!(
+            expanded_node.node_type,
+            NodeType::Chance,
+            "Action not executed correctly. Should be chance node."
+        );
+        assert_eq!(
+            expanded_node.state.procedure,
+            Some(Procedure::Dodge),
+            "Should be a Dodge action"
+        );
+        assert_eq!(
+            expanded_node.chance_children.len(),
+            0,
+            "Dodge node expanded before expansion."
+        );
+        assert_eq!(
+            expanded_node.decision_children.len(),
+            0,
+            "Dodge node expanded before expansion."
+        );
+    }
+
+    tree.expand(expanded_node_idx)
+        .expect("Failed to expand the Dodge");
+
+    let expanded_node = &tree.nodes[expanded_node_idx];
+
+    assert_eq!(
+        expanded_node.chance_children.len(),
+        2,
+        "Dodge node expansion failed."
+    );
+    assert_eq!(
+        expanded_node.decision_children.len(),
+        0,
+        "Dodge node expansion failed."
+    );
+
+    let chance_children = &tree.nodes[expanded_node_idx].chance_children;
+
+    let mut success_node = None;
+    let mut failure_node = None;
+
+    for &child_idx in chance_children {
+        let child = &tree.nodes[child_idx];
+        if child.state.procedure == Some(Procedure::Turnover) {
+            failure_node = Some(child);
+        } else {
+            success_node = Some(child);
+        }
+    }
+
+    let success = success_node.expect("Success outcome not found");
+    let failure = failure_node.expect("Failure outcome not found");
+
+    assert_eq!(
+        success.chance_probability,
+        3.0 / 6.0,
+        "Success outcome probability incorrect"
+    );
+    assert_eq!(
+        success.state.procedure,
+        Some(Procedure::MoveAction),
+        "Success outcome should restore parent procedure (MoveAction)"
+    );
+    let success_player = success
+        .state
+        .get_active_player()
+        .expect("No active player in success outcome");
+
+    assert!(
+        success_player.state.up,
+        "Player should still be standing after successful Dodge"
+    );
+
+    assert_eq!(
+        failure.chance_probability,
+        3.0 / 6.0,
+        "Failure outcome probability incorrect"
+    );
+    assert_eq!(
+        failure.state.procedure,
+        Some(Procedure::Turnover),
+        "Failure outcome should set procedure to Turnover"
+    );
+    let failure_player = failure
+        .state
+        .get_active_player()
+        .expect("No active player in failure outcome");
+    assert!(
+        !failure_player.state.up,
+        "Player should be knocked down after failed Dodge"
     );
 }
 
