@@ -27,13 +27,13 @@ pub fn move_execution(game_state: &mut GameState, action: &Action) -> Result<(),
     if gfi_required {
         game_state.parent_procedure = game_state.procedure;
         game_state.procedure = Some(Procedure::GFI);
-        game_state.position = Some(vec![position.x, position.y]);
+        game_state.position = Some(position);
         return Ok(());
     }
 
     if game_state.get_team_tackle_zones_at(&current_team_id, &position) > 0 {
         game_state.procedure = Some(Procedure::Dodge);
-        game_state.position = Some(vec![position.x, position.y]);
+        game_state.position = Some(position);
         return Ok(());
     }
 

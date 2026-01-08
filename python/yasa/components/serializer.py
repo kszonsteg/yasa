@@ -1,6 +1,15 @@
 from typing import Any
 
-from botbowl import Dugout, GameState, Player, Team, procedure
+from botbowl import BBDieResult, Dugout, GameState, Player, Team, procedure
+
+PLAYER_ACTIONS = (
+    procedure.MoveAction,
+    procedure.PassAction,
+    procedure.HandoffAction,
+    procedure.BlockAction,
+    procedure.BlitzAction,
+    procedure.FoulAction,
+)
 
 
 class GameStateSerializer:
@@ -155,15 +164,15 @@ class GameStateSerializer:
         position = None
         if isinstance(proc, procedure.Interception):
             p = game_state.stack.items[-2].position
-            position = [p.x, p.y]
+            position = {"x": p.x, "y": p.y}
         elif isinstance(proc, procedure.FollowUp):
-            position = [proc.pos_to.x, proc.pos_to.y]
+            position = {"x": proc.pos_to.x, "y": proc.pos_to.y}
 
         result = {
             "procedure": proc_name,
-            "parent_procedure": proc_name
-            if proc_name and proc_name.endswith("Action")
-            else None,
+            "parent_procedure": GameStateSerializer.get_parent_procedure_name(
+                game_state
+            ),
             "current_team_id": game_state.current_team.team_id
             if game_state.current_team is not None
             else None,
@@ -174,31 +183,78 @@ class GameStateSerializer:
                 action.action_type.name for action in game_state.available_actions
             ],
             "position": position,
+            "block_context": GameStateSerializer.get_block_context(game_state, proc),
         }
+        return result
 
-        # Add procedure-specific information
-        if isinstance(proc, procedure.Push):
-            result.update(
+    @staticmethod
+    def get_block_context(
+        game_state: GameState, proc: procedure.Procedure
+    ) -> dict[str, Any] | None:
+        if isinstance(proc, procedure.FollowUp):
+            return {
+                "attacker": proc.attacker.player_id,
+                "defender": proc.defender.player_id,
+                "position": {"x": proc.pos_to.x, "y": proc.pos_to.y},
+                "knock_out": False,  # doesn't matter
+                "push_chain": [],
+            }
+        elif isinstance(proc, procedure.Block):
+            return {
+                "attacker": proc.attacker.player_id,
+                "defender": proc.defender.player_id,
+                "position": {
+                    "x": proc.defender.position.x,
+                    "y": proc.defender.position.y,
+                },
+                "knock_out": False,
+                "push_chain": [],
+            }
+        elif isinstance(proc, procedure.Push):
+            push_chain = [
                 {
-                    "chain_push": proc.chain,
                     "attacker": proc.pusher.player_id,
                     "defender": proc.player.player_id,
+                    "position": None,
                 }
-            )
-        else:
-            result.update(
-                {
-                    "chain_push": None,
-                    "attacker": None,
-                    "defender": None,
-                }
-            )
-
-        return result
+            ]
+            i = -2
+            parent_proc = game_state.stack.items[i]
+            while not isinstance(parent_proc, procedure.Block):
+                push_chain.insert(
+                    0,
+                    {
+                        "attacker": parent_proc.pusher.player_id,
+                        "defender": parent_proc.player.player_id,
+                        "position": {
+                            "x": parent_proc.push_to.x,
+                            "y": parent_proc.push_to.y,
+                        },
+                    },
+                )
+                i -= 1
+            return {
+                "attacker": parent_proc.attacker.player_id,
+                "defender": parent_proc.defender.player_id,
+                "position": {
+                    "x": parent_proc.defender.position.x,
+                    "y": parent_proc.defender.position.y,
+                },
+                "knock_out": parent_proc.selected_die != BBDieResult.PUSH,
+                "push_chain": push_chain,
+            }
+        return None
 
     @staticmethod
     def get_latest_turn(game_state: GameState) -> procedure.Turn | None:
         for i in range(len(game_state.stack.items) - 1, -1, -1):
             if isinstance(game_state.stack.items[i], procedure.Turn):
                 return game_state.stack.items[i]
+        return None
+
+    @staticmethod
+    def get_parent_procedure_name(game_state: GameState) -> str | None:
+        for i in range(len(game_state.stack.items) - 1, -1, -1):
+            if isinstance(game_state.stack.items[i], PLAYER_ACTIONS):
+                return game_state.stack.items[i].__class__.__name__
         return None

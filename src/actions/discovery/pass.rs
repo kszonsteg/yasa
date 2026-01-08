@@ -27,15 +27,9 @@ pub fn pass_action_discovery(game_state: &mut GameState) -> Result<(), String> {
 pub fn interception_discovery(game_state: &mut GameState) -> Result<(), String> {
     game_state.available_actions = vec![];
 
-    let target_position = if let Some(position) = &game_state.position {
-        if position.len() == 2 {
-            Square::new(position[0], position[1])
-        } else {
-            return Err("Wrong position format in interception discovery".to_string());
-        }
-    } else {
-        return Err("Missing target position in interception discovery".to_string());
-    };
+    let target_position = game_state
+        .position
+        .ok_or("Missing target position in interception discovery")?;
 
     let passer_position = game_state
         .get_active_player()?

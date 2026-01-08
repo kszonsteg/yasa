@@ -1,5 +1,6 @@
 pub mod action;
 pub mod ball;
+pub mod block;
 pub mod constants;
 pub mod enums;
 pub mod game;

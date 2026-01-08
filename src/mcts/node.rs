@@ -127,7 +127,6 @@ impl MCTSNode {
                     ActionType::StartPass,
                     ActionType::StartHandoff,
                     ActionType::StartFoul,
-                    ActionType::StartBlock,
                 ]
                 .contains(&action.action_type())
             })

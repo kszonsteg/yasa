@@ -11,14 +11,18 @@ use crate::actions::discovery::setup::{
 };
 use crate::actions::discovery::special::{ejection_discovery, reroll_discovery};
 use crate::actions::discovery::turn::turn_discovery;
-use crate::actions::execution::block::block_execution;
+use crate::actions::execution::block::{
+    block_execution, follow_up_execution, push_execution, select_attacker_down_execution,
+    select_both_down_execution, select_defender_down_execution, select_defender_stumbles_execution,
+    select_push_execution,
+};
 use crate::actions::execution::movement::{move_execution, stand_up_execution};
 use crate::actions::execution::turn::{
     end_player_turn_execution, end_turn_execution, start_blitz_execution, start_block_execution,
     start_foul_execution, start_handoff_execution, start_move_execution, start_pass_execution,
 };
 use crate::actions::rollout::model::RolloutOutcome;
-use crate::actions::rollout::{dodge_rollout, gfi_rollout};
+use crate::actions::rollout::{block_rollout, dodge_rollout, gfi_rollout};
 use crate::model::action::Action;
 use crate::model::enums::{ActionType, Procedure};
 use crate::model::game::GameState;
@@ -98,6 +102,13 @@ impl ActionRegistry {
             ActionType::StandUp => stand_up_execution(game_state),
             // Block
             ActionType::Block => block_execution(game_state, action),
+            ActionType::SelectAttackerDown => select_attacker_down_execution(game_state),
+            ActionType::SelectBothDown => select_both_down_execution(game_state),
+            ActionType::SelectPush => select_push_execution(game_state),
+            ActionType::SelectDefenderStumbles => select_defender_stumbles_execution(game_state),
+            ActionType::SelectDefenderDown => select_defender_down_execution(game_state),
+            ActionType::Push => push_execution(game_state, action),
+            ActionType::FollowUp => follow_up_execution(game_state, action),
             _ => Err(format!(
                 "Implement {action:?} action execution on procedure {:?} in action registry",
                 game_state.procedure
@@ -114,6 +125,7 @@ impl ActionRegistry {
         match game_state.procedure {
             Some(Procedure::GFI) => gfi_rollout(game_state),
             Some(Procedure::Dodge) => dodge_rollout(game_state),
+            Some(Procedure::BlockRoll) => block_rollout(game_state),
             _ => Err(format!(
                 "Implement {:?} procedure rollout.",
                 game_state.procedure

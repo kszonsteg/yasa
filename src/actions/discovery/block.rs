@@ -52,31 +52,37 @@ pub fn block_discovery(game_state: &mut GameState) -> Result<(), String> {
 }
 
 pub fn push_discovery(game_state: &mut GameState) -> Result<(), String> {
-    let attacker_id = game_state
-        .attacker
-        .as_ref()
-        .ok_or("Missing attacker in Push discovery".to_string())?;
+    game_state.available_actions = vec![];
 
-    let defender_id = game_state
-        .defender
+    let block_ctx = game_state
+        .block_context
         .as_ref()
-        .ok_or("Missing defender in Push discovery".to_string())?;
+        .ok_or("Missing block context in Push discovery".to_string())?;
 
+    let latest = block_ctx
+        .push_chain
+        .last()
+        .ok_or("Missing last push chain item in push discovery")?;
+
+    let attacker_id = &latest.attacker;
     let attacker = game_state.get_player(attacker_id)?;
     let attacker_position = attacker
         .position
         .as_ref()
         .ok_or("No attacker position in push discovery")?;
+
+    let defender_id = &latest.defender;
     let defender = game_state.get_player(defender_id)?;
     let defender_position = defender
         .position
         .as_ref()
-        .ok_or("No defender postion in push discovery")?;
+        .ok_or("No defender position in push discovery")?;
 
     // Get all adjacent squares (including out of bounds)
     let adjacent_squares = defender_position.get_adjacent_squares(false);
     let mut squares_empty = Vec::new();
     let mut squares_out = Vec::new();
+    let mut squares_occupied = Vec::new();
     let mut all_valid_squares = Vec::new();
 
     for square in adjacent_squares {
@@ -99,21 +105,24 @@ pub fn push_discovery(game_state: &mut GameState) -> Result<(), String> {
         if include {
             if square.is_out_of_bounds() {
                 squares_out.push(square);
-            } else if game_state.get_player_at(&square).is_err() {
+            } else if game_state.get_player_at(&square).is_ok() {
+                squares_occupied.push(square);
+            } else {
                 squares_empty.push(square);
             }
             all_valid_squares.push(square);
         }
     }
 
+    // Priority: empty squares > out of bounds > occupied (chain pushes)
+    // Only use occupied if ALL valid squares are occupied (no empty/oob)
     let final_squares = if !squares_empty.is_empty() {
         squares_empty
     } else if !squares_out.is_empty() {
         squares_out
     } else {
-        // If no empty or out-of-bounds squares, use all valid squares
-        // This should not happen according to Blood Bowl rules, but included for safety
-        all_valid_squares
+        // All valid push squares are occupied - enable chain push
+        squares_occupied
     };
 
     for square in final_squares {
@@ -127,17 +136,16 @@ pub fn push_discovery(game_state: &mut GameState) -> Result<(), String> {
 
 pub fn follow_up_discovery(game_state: &mut GameState) -> Result<(), String> {
     let player = game_state.get_active_player()?;
-    let position = game_state
-        .position
+
+    let block_ctx = game_state
+        .block_context
         .as_ref()
-        .ok_or("No position for follow up".to_string())?;
+        .ok_or("Missing block context in follow_up discovery".to_string())?;
+
+    let position = block_ctx.position;
 
     game_state.available_actions = vec![
-        Action::new(
-            ActionType::FollowUp,
-            None,
-            Some(Square::new(position[0], position[1])),
-        ),
+        Action::new(ActionType::FollowUp, None, Some(position)),
         Action::new(ActionType::FollowUp, None, player.position),
     ];
 

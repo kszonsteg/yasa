@@ -58,6 +58,7 @@ def run_game(
         print(f"Game failed with error: {e}")
         print("Procedure Stack:")
         pprint([item.__class__.__name__ for item in game.state.stack.items])
+        pprint(game.state.stack.items[-1].__dict__)
         with open("error.json", "w") as f:
             json.dump(game.to_json(), f, indent=4)
         raise

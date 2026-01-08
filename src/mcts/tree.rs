@@ -275,12 +275,7 @@ impl MCTSTree {
 
     pub fn backpropagate(&mut self, mut node_index: usize, score: f64) {
         loop {
-            let adjusted_score = match self.nodes[node_index].node_type {
-                NodeType::Decision => score,
-                NodeType::Chance => score * self.nodes[node_index].chance_probability,
-            };
-
-            self.nodes[node_index].add_visit(adjusted_score);
+            self.nodes[node_index].add_visit(score);
 
             if let Some(parent_index) = self.nodes[node_index].parent {
                 node_index = parent_index;

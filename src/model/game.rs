@@ -1,11 +1,11 @@
 use super::action::Action;
 use super::ball::Ball;
+use super::block::BlockContext;
 use super::constants::{ARENA_HEIGHT, ARENA_WIDTH, PASS_MATRIX};
 use super::enums::{ActionType, PassDistance, Procedure, WeatherType};
 use super::player::Player;
 use super::position::Square;
 use super::team::{Dugout, Team};
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -60,10 +60,9 @@ pub struct GameState {
     pub current_team_id: Option<String>,
     pub active_player_id: Option<String>,
     pub rolls: Vec<ActionType>,
-    pub chain_push: Option<bool>, // Indicates if the last push was part of a chain
-    pub attacker: Option<String>, // Player ID of the player who pushed
-    pub defender: Option<String>, // Player ID of the player who was pushed
-    pub position: Option<Vec<i32>>, // Position of the player which is blocked
+    #[serde(default)]
+    pub block_context: Option<BlockContext>, // Context for block procedures including chain pushes
+    pub position: Option<Square>, // Position for non-block procedures (dodge, GFI, interception)
     #[serde(default)]
     pub available_actions: Vec<Action>,
 }
@@ -92,10 +91,8 @@ impl Default for GameState {
             turn_state: Some(TurnState::default()),
             coin_toss_winner: None,
             rolls: Vec::new(),
-            chain_push: None,
-            attacker: None,
-            defender: None,
             position: None,
+            block_context: None,
         }
     }
 }
