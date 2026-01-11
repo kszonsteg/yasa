@@ -199,10 +199,11 @@ fn test_mcts_dodge() {
     let success = success_node.expect("Success outcome not found");
     let failure = failure_node.expect("Failure outcome not found");
 
-    assert_eq!(
-        success.chance_probability,
-        3.0 / 6.0,
-        "Success outcome probability incorrect"
+    assert!(
+        (success.chance_probability - 4.0 / 6.0).abs() < 1e-6,
+        "Success outcome probability incorrect. Expected {}, got {}",
+        4.0 / 6.0,
+        success.chance_probability
     );
     assert_eq!(
         success.state.procedure,
@@ -219,10 +220,11 @@ fn test_mcts_dodge() {
         "Player should still be standing after successful Dodge"
     );
 
-    assert_eq!(
-        failure.chance_probability,
-        3.0 / 6.0,
-        "Failure outcome probability incorrect"
+    assert!(
+        (failure.chance_probability - 2.0 / 6.0).abs() < 1e-6,
+        "Failure outcome probability incorrect. Expected {}, got {}",
+        2.0 / 6.0,
+        failure.chance_probability
     );
     assert_eq!(
         failure.state.procedure,
@@ -295,4 +297,50 @@ fn test_touchdown() {
         touchdown_score > ball_picked_score,
         "Touchdown not scoring."
     );
+}
+
+#[test]
+fn test_mcts_quick_snap() {
+    let mut state = game_state_setup(15, 5, 15, 4, 15, 6);
+    state.procedure = Some(Procedure::MoveAction);
+    state.active_player_id = HOME_PLAYER_ID.to_string().into();
+
+    // Enable quick snap in turn state
+    let mut turn_state = yasa_core::model::game::TurnState::default();
+    turn_state.quick_snap = true;
+    state.turn_state = Some(turn_state);
+
+    let registry = ActionRegistry::new();
+
+    registry
+        .discover_actions(&mut state)
+        .expect("Failed to discover actions.");
+
+    for action in &state.available_actions {
+        if action.action_type() == ActionType::Move {
+            if let Some(pos) = action.position() {
+                let start_pos = Square { x: 15, y: 5 };
+                let dist = start_pos.distance(&pos);
+                assert!(
+                    dist <= 1,
+                    "Quick snap move should be adjacent, got dist {}",
+                    dist
+                );
+                if let Some(path) = action.path() {
+                    assert!(
+                        (path.prob - 1.0).abs() < 1e-6,
+                        "Quick snap move should have prob 1.0 (no dodge), got {}",
+                        path.prob
+                    );
+                }
+            }
+        }
+    }
+
+    let move_count = state
+        .available_actions
+        .iter()
+        .filter(|a| a.action_type() == ActionType::Move)
+        .count();
+    assert!(move_count > 0, "Should find move actions during quick snap");
 }

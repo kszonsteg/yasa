@@ -20,7 +20,7 @@ def run_game(
     # Load configurations, rules, arena and teams
     config = botbowl.load_config("bot-bowl")
     config.competition_mode = False
-    config.pathfinding_enabled = False
+    config.pathfinding_enabled = True
     ruleset = botbowl.load_rule_set(config.ruleset)
     arena = botbowl.load_arena(config.arena)
     home = botbowl.load_team_by_filename("human", ruleset)
@@ -30,10 +30,10 @@ def run_game(
 
     if as_home:
         home_agent = cast(YasaMCTS, botbowl.make_bot("yasa_mcts"))
-        away_agent = cast(YasaRandom, botbowl.make_bot("yasa_random"))
+        away_agent = cast(YasaRandom, botbowl.make_bot("random"))
         mcts_agent = home_agent
     else:
-        home_agent = cast(YasaRandom, botbowl.make_bot("yasa_random"))
+        home_agent = cast(YasaRandom, botbowl.make_bot("random"))
         away_agent = cast(YasaMCTS, botbowl.make_bot("yasa_mcts"))
         mcts_agent = away_agent
     mcts_agent.time_limit = time_limit

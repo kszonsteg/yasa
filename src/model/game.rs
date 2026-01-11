@@ -6,7 +6,47 @@ use super::enums::{ActionType, PassDistance, Procedure, WeatherType};
 use super::player::Player;
 use super::position::Square;
 use super::team::{Dugout, Team};
+use crate::pathfinding::Path;
 use serde::{Deserialize, Serialize};
+
+/// State for tracking path-based movement execution.
+/// When a player selects a Move action with a path, this tracks progress.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PathFollowState {
+    /// The full path to follow
+    pub path: Path,
+    /// Current step index in the path (0 = first step)
+    pub current_step: usize,
+}
+
+impl PathFollowState {
+    pub fn new(path: Path) -> Self {
+        PathFollowState {
+            path,
+            current_step: 0,
+        }
+    }
+
+    /// Get the next square to move to, if any remain
+    pub fn next_square(&self) -> Option<Square> {
+        self.path.squares.get(self.current_step).copied()
+    }
+
+    /// Advance to the next step in the path
+    pub fn advance(&mut self) {
+        self.current_step += 1;
+    }
+
+    /// Check if the path is complete
+    pub fn is_complete(&self) -> bool {
+        self.current_step >= self.path.squares.len()
+    }
+
+    /// Get remaining steps in the path
+    pub fn remaining_steps(&self) -> usize {
+        self.path.squares.len().saturating_sub(self.current_step)
+    }
+}
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TurnState {
@@ -65,6 +105,9 @@ pub struct GameState {
     pub position: Option<Square>, // Position for non-block procedures (dodge, GFI, interception)
     #[serde(default)]
     pub available_actions: Vec<Action>,
+    /// Active path being followed during movement (not serialized)
+    #[serde(skip)]
+    pub active_path: Option<PathFollowState>,
 }
 
 impl Default for GameState {
@@ -93,6 +136,7 @@ impl Default for GameState {
             rolls: Vec::new(),
             position: None,
             block_context: None,
+            active_path: None,
         }
     }
 }

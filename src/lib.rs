@@ -8,6 +8,7 @@ use serde_json::json;
 pub mod actions;
 pub mod mcts;
 pub mod model;
+pub mod pathfinding;
 
 #[pyfunction]
 fn get_actions(state: &str) -> PyResult<String> {

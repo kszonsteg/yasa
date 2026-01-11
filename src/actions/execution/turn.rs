@@ -113,6 +113,7 @@ pub fn end_player_turn_execution(game_state: &mut GameState) -> Result<(), Strin
     active_player.state.moves = 0;
     active_player.state.squares_moved = vec![];
     active_player.state.has_blocked = false;
+    game_state.active_path = None;
     game_state.active_player_id = None;
     game_state.procedure = Some(Procedure::Turn);
     game_state.parent_procedure = None;

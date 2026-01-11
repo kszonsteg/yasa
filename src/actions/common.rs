@@ -44,10 +44,19 @@ pub fn execute_player_movement(game_state: &mut GameState, position: Square) -> 
         )
     })?;
     active_player.position = Some(position);
+    if let Some(ref mut active_path) = game_state.active_path {
+        active_path.advance();
+    }
 
     if let Ok(ball_position) = game_state.get_ball_position() {
         if ball_position == position {
             game_state.balls[0].is_carried = true;
+            // reset path after ball pick up, so the player can move again
+            if let Some(ref mut active_path) = game_state.active_path {
+                if active_path.is_complete() {
+                    game_state.active_path = None;
+                }
+            }
         }
     }
 
