@@ -9,7 +9,7 @@ use crate::model::position::Square;
 /// This function:
 /// 1. Increments the active player's move counter
 /// 2. Updates the player's position
-/// 3. Picks up ball if at the target position
+/// 3. Picks up the ball if at the target position
 /// 4. Updates ball position if carrying
 /// 5. Checks for and handles touchdowns
 /// 6. Reverts to parent procedure if no touchdown
@@ -35,6 +35,11 @@ pub fn execute_player_movement(game_state: &mut GameState, position: Square) -> 
             old_moves,
             ma + 2
         ));
+    }
+
+    if !active_player.state.up {
+        active_player.state.up = true;
+        active_player.state.moves += 3;
     }
 
     active_player.state.moves = active_player.state.moves.checked_add(1).ok_or_else(|| {

@@ -16,7 +16,7 @@ pub fn move_execution(game_state: &mut GameState, action: &Action) -> Result<(),
             .next_square()
             .ok_or("Path is complete but move_execution called")?
     } else {
-        // Fallback for actions without paths (legacy support, shouldn't happen)
+        // Fallback for actions without paths (legacy support shouldn't happen)
         action
             .position()
             .ok_or("Position missing in Move action and no active path")?

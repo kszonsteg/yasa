@@ -132,7 +132,11 @@ impl<'a> Pathfinder<'a> {
     pub fn find_all_paths(&self) -> Vec<Path> {
         let ma = self.player.get_ma();
         let moves_used = self.player.state.moves;
+        let player_up = self.player.state.up;
         let mut moves_left = ma.saturating_sub(moves_used);
+        if !player_up {
+            moves_left = moves_left.saturating_sub(3);
+        }
         let mut gfis_left = (ma + MAX_GFI).saturating_sub(moves_used).min(MAX_GFI);
 
         if self.is_quick_snap {
