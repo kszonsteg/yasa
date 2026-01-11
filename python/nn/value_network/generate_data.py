@@ -49,6 +49,7 @@ def main(num_games: int, data_dir: str, parallel_index: int):
             save_state_serializer=GameStateSerializer,
         )
         game.config.fast_mode = True
+        game.config.pathfinding_enabled = True
 
         try:
             game.init()

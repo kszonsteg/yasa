@@ -1,257 +1,255 @@
 use super::ValuePolicyTrait;
 use crate::model::constants::ARENA_WIDTH;
-use crate::model::enums::Procedure;
 use crate::model::game::GameState;
 use crate::model::player::Player;
-use crate::model::position::Square;
 
-pub struct HeuristicValuePolicy;
+pub struct HeuristicParameters {
+    pub ball_carry: f64,
+    pub end_zone_distance: f64,
+    pub protecting_carrier: f64,
+    pub standing_players: f64,
+    pub knock_out: f64,
+    pub enemy_player_blocked: f64,
+}
+
+impl Default for HeuristicParameters {
+    fn default() -> Self {
+        Self {
+            end_zone_distance: 10.0,
+            ball_carry: 1.0,
+            protecting_carrier: 0.05,
+            standing_players: 0.5,
+            knock_out: 0.5,
+            enemy_player_blocked: 0.2,
+        }
+    }
+}
+
+pub struct HeuristicValuePolicy {
+    pub parameters: HeuristicParameters,
+}
 
 impl HeuristicValuePolicy {
     pub fn new() -> Result<Self, String> {
-        Ok(Self {})
+        Ok(Self {
+            parameters: HeuristicParameters::default(),
+        })
     }
 
-    /// Evaluate the ball carrier's position relative to the target endzone.
-    /// Returns a score in the range [0.0, 1.0] where:
-    /// - 1.0 = carrier is at the target endzone
-    /// - 0.0 = carrier is at the opposite endzone
-    fn evaluate_carrier_endzone_distance(
+    /// 1. Reward for getting closer to the end zone with a ball.
+    /// 2. Reward for carrying the ball, or penalty if the enemy is carrying.
+    /// 3. Reward for getting closer to the ball, if ball is not carried by anyone.
+    fn evaluate_ball_state(
         &self,
-        carrier_position: &Square,
-        target_x: i32,
-        _max_endzone_distance: f64,
-    ) -> f64 {
-        let endzone_distance = (carrier_position.x - target_x).abs() as f64;
-        0.985 - 0.03 * endzone_distance
-    }
-
-    /// Evaluate how well players are supporting the ball carrier.
-    /// Returns a score in the range [0.0, 0.1] per player where:
-    /// - 0.1 = player is at optimal support distance (close to carrier)
-    /// - 0.0 = player is far from the carrier
-    fn evaluate_player_support(
-        &self,
-        player_position: &Square,
-        carrier_position: &Square,
-        max_field_distance: f64,
-    ) -> f64 {
-        let distance_to_carrier = player_position.distance(carrier_position) as f64;
-        // Closer support is better, but not too close (3-5 squares ideal for support)
-        if distance_to_carrier <= 5.0 {
-            0.1 * (1.0 - distance_to_carrier / 5.0)
-        } else {
-            0.05 * (1.0 - distance_to_carrier / max_field_distance)
-        }
-    }
-
-    /// Evaluate the team's offensive position when they have the ball.
-    /// Returns a score in the range [0.0, 1.0] where:
-    /// - Higher scores indicate better offensive positioning
-    /// - Includes carrier's proximity to endzone and team support
-    fn evaluate_offensive_position(
-        &self,
+        state: &GameState,
+        current_team_id: &String,
         current_team_players: &[&Player],
-        carrier: &Player,
-        carrier_position: &Square,
         target_x: i32,
-        max_field_distance: f64,
-        max_endzone_distance: f64,
     ) -> Result<f64, String> {
-        let mut carrier_score = 0.0;
-        let mut support_score = 0.0;
-
-        for player in current_team_players {
-            let player_pos = player
-                .position
-                .as_ref()
-                .ok_or("Evaluation: Player has no position")?;
-
-            if player.player_id == carrier.player_id {
-                // Ball carrier - high score for being close to endzone
-                carrier_score = self.evaluate_carrier_endzone_distance(
-                    carrier_position,
-                    target_x,
-                    max_endzone_distance,
-                );
-            } else {
-                // Other players - score for protecting/supporting the carrier
-                support_score +=
-                    self.evaluate_player_support(player_pos, carrier_position, max_field_distance);
-            }
-        }
-
-        // Final score is dominated by the carrier's position
-        // Support score is averaged and added as a small bonus (max 0.01)
-        let avg_support = if current_team_players.len() > 1 {
-            (support_score / (current_team_players.len() - 1) as f64) * 0.01
-        } else {
-            0.0
-        };
-
-        Ok(carrier_score + avg_support)
-    }
-
-    /// Evaluate the team's defensive position when the enemy has the ball.
-    /// Returns a score in the range [-1.0, 0.0] where:
-    /// - Lower scores indicate enemy is closer to our endzone
-    /// - Higher scores (closer to 0) indicate better defensive positioning
-    fn evaluate_defensive_position(
-        &self,
-        current_team_players: &[&Player],
-        carrier_position: &Square,
-        target_x: i32,
-        max_field_distance: f64,
-    ) -> Result<f64, String> {
-        let mut team_score = 0.0;
-
-        // Our endzone is at the opposite side of our target endzone
-        let our_endzone_x = if target_x == 1 { ARENA_WIDTH - 1 } else { 1 };
-
-        let enemy_distance_to_our_endzone = (carrier_position.x - our_endzone_x).abs() as f64;
-        // Enemy closeness to our endzone is bad for us (negative score)
-        let base_defensive_score = -(0.99 - 0.03 * enemy_distance_to_our_endzone);
-
-        for player in current_team_players {
-            let player_pos = player
-                .position
-                .as_ref()
-                .ok_or("Evaluation: Player has no position")?;
-
-            let distance_to_carrier = player_pos.distance(carrier_position) as f64;
-            // Being close to an enemy carrier is good for defense
-            team_score += 0.4 * (1.0 - distance_to_carrier / max_field_distance);
-        }
-
-        // Normalize and add base defensive score
-        let avg_defense = team_score / current_team_players.len() as f64;
-        Ok(base_defensive_score + avg_defense * 0.1)
-    }
-
-    /// Evaluate the team's position when the ball is on the ground.
-    /// Returns a score in the range [0.0, 0.3] where:
-    /// - Higher scores indicate players are closer to the loose ball
-    /// - 0.0 = base score when the ball is on ground
-    fn evaluate_loose_ball_position(
-        &self,
-        current_team_players: &[&Player],
-        ball_position: &Square,
-        max_field_distance: f64,
-    ) -> Result<f64, String> {
-        let mut team_score = 0.0;
-
-        for player in current_team_players {
-            let player_pos = player
-                .position
-                .as_ref()
-                .ok_or("Evaluation: Player has no position")?;
-
-            let distance_to_ball = player_pos.distance(ball_position) as f64;
-            // Being close to the ball is good
-            team_score += 0.3 * (1.0 - distance_to_ball / max_field_distance);
-        }
-
-        // Normalize by number of players
-        Ok(team_score / current_team_players.len() as f64)
-    }
-
-    /// Evaluate a game state from the perspective of the current team.
-    /// Combines multiple evaluation aspects into a final score.
-    /// Returns a score in the range [-1.0, 1.0] where:
-    /// - 1.0 = definitely winning
-    /// - 0.0 = neutral/even
-    /// - -1.0 = definitely losing
-    pub fn evaluate(&self, state: &GameState) -> Result<f64, String> {
-        if state.procedure == Some(Procedure::Touchdown) {
-            return Ok(1.0);
-        }
-
         let ball_position = state.get_ball_position()?;
         let ball_carrier = state.get_ball_carrier();
 
-        // Get the current team to determine which endzone to target
-        let current_team = state.get_current_team().ok_or_else(|| {
-            format!(
-                "Evaluation: No current team - current_team_id: {:?}, home_team exists: {}, away_team exists: {}, home_team_id: {:?}, away_team_id: {:?}",
-                state.current_team_id,
-                state.home_team.is_some(),
-                state.away_team.is_some(),
-                state.home_team.as_ref().map(|t| &t.team_id),
-                state.away_team.as_ref().map(|t| &t.team_id)
-            )
-        })?;
+        match ball_carrier {
+            Ok(carrier) => {
+                let carrier_team_id = state.get_player_team_id(&carrier.player_id)?;
+                let is_our_carrier = carrier_team_id == current_team_id;
 
-        let is_home_team = state
-            .home_team
-            .as_ref()
-            .map(|t| t.team_id == current_team.team_id)
-            .unwrap_or(false);
+                if is_our_carrier {
+                    let carrier_pos = carrier.position.as_ref().ok_or("Carrier has no position")?;
+                    let dist = (carrier_pos.x - target_x).abs() as f64;
+                    // Normalized distance score (1.0 at target, 0.0 at other side)
+                    let dist_score = 1.0 - (dist / ARENA_WIDTH as f64);
 
-        // Determine target endzone
-        let target_x = if is_home_team {
-            1 // Home team targets left endzone
-        } else {
-            ARENA_WIDTH - 1 // Away team targets right endzone
-        };
+                    // Component 1 & 2 (Positive)
+                    Ok(self.parameters.ball_carry
+                        + (self.parameters.end_zone_distance * dist_score))
+                } else {
+                    // Component 2 (Negative - Penalty)
+                    Ok(-self.parameters.ball_carry)
+                }
+            }
+            Err(_) => {
+                // Component 3: Loose ball
+                // Calculate average proximity of our team to the ball
+                let mut total_proximity = 0.0;
+                for player in current_team_players {
+                    if let Some(pos) = &player.position {
+                        let dist = pos.distance(&ball_position) as f64;
+                        total_proximity += 1.0 - (dist / ARENA_WIDTH as f64);
+                    }
+                }
 
-        // Get all players from the current team on the pitch
-        let current_team_players = state.get_players_on_pitch(&current_team.team_id, true);
+                let avg_proximity = if !current_team_players.is_empty() {
+                    total_proximity / current_team_players.len() as f64
+                } else {
+                    0.0
+                };
 
-        if current_team_players.is_empty() {
-            return Err("Evaluation: No players on pitch for current team".to_string());
+                // Use ball_carry weight as base for this reward as per instructions (or similar magnitude)
+                Ok(self.parameters.ball_carry * avg_proximity)
+            }
         }
+    }
 
-        let max_field_distance = (ARENA_WIDTH + 17) as f64; // Rough max distance on field
-        let max_endzone_distance = ARENA_WIDTH as f64;
-
-        let total_score = if ball_carrier.is_ok() {
-            let carrier = ball_carrier?;
-            // Someone carries a Ball
-            let carrier_position = carrier
+    /// 4. Reward for protecting the ball carrier (or pressuring enemy carrier).
+    ///    Both cases require getting teammates close to the carrier.
+    fn evaluate_carrier_proximity(
+        &self,
+        state: &GameState,
+        _current_team_id: &String,
+        current_team_players: &[&Player],
+    ) -> Result<f64, String> {
+        if let Ok(carrier) = state.get_ball_carrier() {
+            let carrier_pos = carrier
                 .position
                 .as_ref()
-                .ok_or("Evaluation: Carrier has no position")?;
-            let carrier_on_our_team =
-                *state.get_player_team_id(&carrier.player_id)? == current_team.team_id;
+                .ok_or("Carrier missing position")?;
 
-            if carrier_on_our_team {
-                // Our team has the ball-evaluate offensive position
-                self.evaluate_offensive_position(
-                    &current_team_players,
-                    carrier,
-                    carrier_position,
-                    target_x,
-                    max_field_distance,
-                    max_endzone_distance,
-                )?
-            } else {
-                // Enemy has the ball - evaluated defensive position
-                self.evaluate_defensive_position(
-                    &current_team_players,
-                    carrier_position,
-                    target_x,
-                    max_field_distance,
-                )?
+            let mut proximity_score = 0.0;
+            for player in current_team_players {
+                // Skip the carrier himself (he is distance 0 to himself)
+                if player.player_id == carrier.player_id {
+                    continue;
+                }
+
+                if let Some(pos) = &player.position {
+                    let dist = pos.distance(carrier_pos) as f64;
+                    // "The closer to the ball, the better."
+                    let max_dist = 10.0;
+                    if dist < max_dist {
+                        proximity_score += 1.0 - (dist / max_dist);
+                    }
+                }
             }
+
+            Ok(proximity_score * self.parameters.protecting_carrier)
         } else {
-            // Ball is on the ground - evaluate loose ball positioning
-            self.evaluate_loose_ball_position(
-                &current_team_players,
-                &ball_position,
-                max_field_distance,
-            )?
+            Ok(0.0)
+        }
+    }
+
+    /// 5. Reward for blocking the enemy ball carrier
+    /// 8. Reward for blocking the enemy players
+    fn evaluate_blocks(&self, state: &GameState, current_team_id: &String) -> Result<f64, String> {
+        let mut score = 0.0;
+
+        // Identify enemy team
+        let home_is_current = state.is_home_team(current_team_id);
+        let enemy_team = if home_is_current {
+            state.away_team.as_ref()
+        } else {
+            state.home_team.as_ref()
         };
 
-        // Apply unused player penalty to get the final score
-        let final_score = total_score;
+        if let Some(enemy_team) = enemy_team {
+            let ball_carrier_id = state.get_ball_carrier().ok().map(|p| p.player_id.clone());
 
-        Ok(final_score.clamp(-1.0, 1.0))
+            for enemy in enemy_team.players_by_id.values() {
+                if !enemy.state.up || enemy.state.knocked_out || enemy.position.is_none() {
+                    continue;
+                }
+                let enemy_pos = enemy.position.as_ref().unwrap();
+
+                // Check if blocked by at least one of our players
+                // "Only one player counts"
+
+                let blockers = state.get_adjacent_opponents(&enemy_team.team_id, enemy_pos)?;
+
+                if !blockers.is_empty() {
+                    // Component 8: Reward for blocking enemy
+                    score += self.parameters.enemy_player_blocked;
+
+                    // Component 5: Reward for blocking carrier
+                    if let Some(carrier_id) = &ball_carrier_id {
+                        if &enemy.player_id == carrier_id {
+                            score += self.parameters.enemy_player_blocked;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(score)
+    }
+
+    /// 6. Penalty for not standing or knocked out players from the team
+    /// 7. Reward for not standing or knocked out players from the enemy team
+    fn evaluate_team_states(&self, state: &GameState, current_team_id: &String) -> f64 {
+        let mut score = 0.0;
+
+        let teams = [
+            (&state.home_team, &state.home_dugout),
+            (&state.away_team, &state.away_dugout),
+        ];
+
+        for (team_opt, _dugout_opt) in teams.iter() {
+            if let Some(team) = team_opt {
+                let is_us = &team.team_id == current_team_id;
+
+                for player in team.players_by_id.values() {
+                    // Knocked out
+                    if player.state.knocked_out {
+                        if is_us {
+                            score -= self.parameters.knock_out;
+                        } else {
+                            score += self.parameters.knock_out;
+                        }
+                        continue; // KO implies not standing, but we separate the penalties usually
+                    }
+
+                    // Not standing (Down or Stunned) but on pitch
+                    if player.position.is_some() && !player.state.up {
+                        if is_us {
+                            score -= self.parameters.standing_players;
+                        } else {
+                            score += self.parameters.standing_players;
+                        }
+                    }
+                }
+            }
+        }
+
+        score
+    }
+
+    pub fn evaluate(&self, state: &GameState) -> Result<f64, String> {
+        let current_team = state
+            .get_current_team()
+            .ok_or("Evaluation: No current team!")?;
+        let current_team_id = &current_team.team_id;
+
+        let current_team_players = state.get_players_on_pitch(current_team_id, false); // Include down players for some checks if needed, but mostly we filter
+
+        let is_home_team = state.is_home_team(current_team_id);
+        let target_x = if is_home_team { 1 } else { ARENA_WIDTH - 1 };
+
+        // 1, 2, 3
+        let ball_score =
+            self.evaluate_ball_state(state, current_team_id, &current_team_players, target_x)?;
+
+        // 4 (and proximity aspect of 5)
+        let protection_score =
+            self.evaluate_carrier_proximity(state, current_team_id, &current_team_players)?;
+
+        // 5 (Block contact aspect), 8
+        let block_score = self.evaluate_blocks(state, current_team_id)?;
+
+        // 6, 7
+        let team_state_score = self.evaluate_team_states(state, current_team_id);
+
+        let total_score = ball_score + protection_score + block_score + team_state_score;
+
+        // Normalize to (-1.0, 1.0) using tanh
+        // Scaling factor to prevent saturation too early.
+        // Max theoretical score is roughly 20-30.
+        // tanh(3.0) is ~0.995. So we want 30 to map to ~3.0.
+        // Scaling factor 10.0.
+        Ok((total_score / 10.0).tanh())
     }
 }
 
 impl ValuePolicyTrait for HeuristicValuePolicy {
     fn evaluate(&self, state: &GameState) -> Result<f64, String> {
-        // Call inherent method explicitly to avoid name resolution ambiguity
         HeuristicValuePolicy::evaluate(self, state)
     }
 

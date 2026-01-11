@@ -1,6 +1,7 @@
 use pyo3::{exceptions::PyValueError, prelude::*};
 
 use crate::actions::core::registry::ActionRegistry;
+use crate::mcts::evaluation::HeuristicValuePolicy;
 use crate::mcts::search::MCTSSearch;
 use crate::model::game::GameState;
 use serde_json::json;
@@ -61,10 +62,45 @@ fn get_mcts_action(state: &str, time_limit: u64, terminal: bool) -> PyResult<Str
     }
 }
 
+#[pyfunction]
+fn evaluate_state_heuristic(state: &str) -> PyResult<(f64, f64)> {
+    let mut game_state = GameState::from_json(state)
+        .map_err(|e| PyValueError::new_err(format!("Invalid game state: {e}")))?;
+
+    let heuristic = HeuristicValuePolicy::new().map_err(PyValueError::new_err)?;
+
+    let home_id = game_state
+        .home_team
+        .as_ref()
+        .map(|t| t.team_id.clone())
+        .ok_or_else(|| PyValueError::new_err("No home team"))?;
+
+    let away_id = game_state
+        .away_team
+        .as_ref()
+        .map(|t| t.team_id.clone())
+        .ok_or_else(|| PyValueError::new_err("No away team"))?;
+
+    // Evaluate for Home
+    game_state.current_team_id = Some(home_id);
+    let home_val = heuristic
+        .evaluate(&game_state)
+        .map_err(PyValueError::new_err)?;
+
+    // Evaluate for Away
+    game_state.current_team_id = Some(away_id);
+    let away_val = heuristic
+        .evaluate(&game_state)
+        .map_err(PyValueError::new_err)?;
+
+    Ok((home_val, away_val))
+}
+
 /// A Python module implemented in Rust.
 #[pymodule]
 fn yasa_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_actions, m)?)?;
     m.add_function(wrap_pyfunction!(get_mcts_action, m)?)?;
+    m.add_function(wrap_pyfunction!(evaluate_state_heuristic, m)?)?;
     Ok(())
 }

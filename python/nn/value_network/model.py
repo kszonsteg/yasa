@@ -24,6 +24,7 @@ class ValueNetworkModule(pl.LightningModule):
         - Flattened spatial input concatenated with non-spatial features
         - 2 fully connected layers (256 -> 64) with ReLU and Dropout
         - Output layer with tanh activation for outputs in [-1, 1]
+        - Output shape: (N, 2) where [0] is Home value, [1] is Away value
 
     Attributes:
         BOARD_HEIGHT: Height of the Blood Bowl board (17).
@@ -90,7 +91,7 @@ class ValueNetworkModule(pl.LightningModule):
         - Small 1x1 conv to reduce spatial channels (27 -> 16)
         - Single 3x3 conv for local spatial patterns (16 -> 32)
         - Global average pooling to reduce spatial dims (28*17 -> 1)
-        - Small FC layers (32 + 15 -> 64 -> 1)
+        - Small FC layers (32 + 15 -> 64 -> 2)
 
         Total params: ~6k (very fast inference)
         """
@@ -114,7 +115,7 @@ class ValueNetworkModule(pl.LightningModule):
         self.fc_head = nn.Sequential(
             nn.Linear(fc_input_size, 64),
             nn.ReLU(inplace=True),
-            nn.Linear(64, 1),
+            nn.Linear(64, 2),
         )
 
     def forward(
@@ -130,7 +131,7 @@ class ValueNetworkModule(pl.LightningModule):
                               F = num_non_spatial_features.
 
         Returns:
-            Tensor of shape (N, 1) with a single value score in [-1, 1].
+            Tensor of shape (N, 2) with value scores in [-1, 1] for [Home, Away].
         """
         # Process spatial features
         x = self.spatial_reduce(spatial_input)  # (N, 16, W, H)
@@ -155,9 +156,15 @@ class ValueNetworkModule(pl.LightningModule):
         # Mean absolute error (scalar output)
         mae = torch.mean(torch.abs(outputs - labels))
 
+        # Separate metrics for Home and Away
+        mae_home = torch.mean(torch.abs(outputs[:, 0] - labels[:, 0]))
+        mae_away = torch.mean(torch.abs(outputs[:, 1] - labels[:, 1]))
+
         return {
             "loss": loss,
             "mae": mae,
+            "mae_home": mae_home,
+            "mae_away": mae_away,
         }
 
     def _log_metrics(self, metrics: dict[str, torch.Tensor], stage: str) -> None:

@@ -18,15 +18,14 @@ from torch.utils.data import DataLoader, Dataset, random_split
 
 class BloodBowlDataset(Dataset):
     """
-    Dataset for loading Blood Bowl game states for a single-output value network.
+    Dataset for loading Blood Bowl game states for a value network.
 
-    This dataset is designed to train a network that predicts a single scalar
-    value for the current game state in [-1, 1].
+    This dataset is designed to train a network that predicts value scores
+    for both home and away teams in [-1, 1].
 
-    Label semantics (per drive):
-        - +1 if the home team eventually scored a touchdown in the drive
-        - -1 if the away team eventually scored a touchdown in the drive
-        - 0 otherwise
+    Labels (per state):
+        - Index 0: Home team value (mixed outcome + heuristic)
+        - Index 1: Away team value (mixed outcome + heuristic)
 
     Additional features:
         - Absolute Representation: The board is represented from a fixed perspective,
@@ -73,8 +72,13 @@ class BloodBowlDataset(Dataset):
         state = self.samples[idx]
 
         spatial_input, non_spatial_input = self.parse_game_state(state)
-        # Ensure the label has shape (1,) to match model output (N,1)
-        label = torch.tensor([state["score"]], dtype=torch.float32)
+
+        # Load dual labels
+        label_home = state.get("label_home", 0.0)
+        label_away = state.get("label_away", 0.0)
+
+        # Shape (2,)
+        label = torch.tensor([label_home, label_away], dtype=torch.float32)
 
         return spatial_input, non_spatial_input, label
 

@@ -118,7 +118,7 @@ Examples:
 
 Based on the current backlog, the following features are planned:
 
-- **Ball Mechanics:** Pushing a player to a square with a ball should result in a bounce.
+- **Ball Mechanics:** Pushing a player to a square with a ball should result in a bounce and generally ball bounces on pick-ups, handoffs etc.
 - **Knock Downs:** Implement full effects of knockdowns beyond just marking as knocked out.
 - **Skills:** Implement the base skill effects.
 - **Field Bounds:** Handle pushing players out of bounds correctly.
