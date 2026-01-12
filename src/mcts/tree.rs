@@ -1,5 +1,5 @@
 use crate::actions::core::registry::ActionRegistry;
-use crate::mcts::evaluation::HeuristicValuePolicy;
+use crate::mcts::evaluation::HeuristicValuePolicy as ValuePolicy;
 use crate::mcts::node::{MCTSNode, NodeType};
 use crate::model::action::Action;
 use crate::model::enums::{ActionType, Procedure};
@@ -9,7 +9,7 @@ pub struct MCTSTree {
     pub nodes: Vec<MCTSNode>,
     pub root_index: usize,
     pub exploration_constant: f64,
-    evaluator: HeuristicValuePolicy,
+    evaluator: ValuePolicy,
     action_registry: ActionRegistry,
 }
 
@@ -19,7 +19,7 @@ impl MCTSTree {
         let action_registry = ActionRegistry::new();
         action_registry.discover_actions(&mut state)?;
         let root_node = MCTSNode::new_decision_node(state, None, 1.0)?;
-        let evaluator = HeuristicValuePolicy::new();
+        let evaluator = ValuePolicy::new();
         match evaluator {
             Err(_) => Err("Failed to initialize evaluator".to_string()),
             Ok(ev) => Ok(MCTSTree {
